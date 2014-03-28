@@ -65,10 +65,8 @@ class Pattern(Guard):
         guarded.arg_guards = sorted(chain(self.arg_guards, self.kwarg_guards, held_guards), key=lambda x: x.arg_pos)
         guarded.kwarg_guards = {(g.arg_name, g) for g in chain(self.arg_guards, self.kwarg_guards, held_guards)}
         update_wrapper(guarded, func)
-        #cache = ProxyCache(guarded)
 
-        #TODO: This still does not add a cache to a module
-        return guarded #cache
+        return guarded
 
 
 class GuardedFunction(object):
@@ -90,22 +88,6 @@ class GuardedFunction(object):
     def validate(self, *args, **kwargs):
         return all(guard.validate(arg) for (arg, guard) in zip(args, self.arg_guards)) and \
             all(self.kwarg_guards[kw].validate(arg) for (kw, arg) in kwargs if kw in self.kwarg_guards)
-
-
-class ProxyCache(object):
-    def __init__(self, initial_func):
-        self.cache = [initial_func]
-        self.most_recent = initial_func
-
-    def __getattr__(self, item):
-        return getattr(self.most_recent, item)
-
-    def __get__(self, instance=None, owner=None):
-        return FunctionProxy(self, instance, owner)
-
-    def __set__(self, instance, value):
-        self.cache.append(value)
-        self.most_recent = value
 
 
 class FunctionProxy(object):
