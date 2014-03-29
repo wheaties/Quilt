@@ -11,6 +11,16 @@ class Guard(object):
     def validate(self, value):
         return True
 
+    def __str__(self):
+        return self.__name__ + '(arg_name=' + str(self.arg_name)  + ', arg_pos=' + str(self.arg_pos) + ')'
+
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def __name__(self):
+        return 'Guard'
+
     def validate_object(self, obj):
         try:
             attr = getattr(obj, self.arg_name)
@@ -94,6 +104,13 @@ class PlaceholderGuard(Guard):
     def __init__(self, wrapped_func=None, arg_name=None, arg_pos=None):
         super(PlaceholderGuard, self).__init__(arg_name, arg_pos)
         self.wrapped_func = wrapped_func
+
+    @property
+    def __name__(self):
+        if self.wrapped_func:
+            return 'BoundGuard'
+        else:
+            return 'UnboundGuard'
 
     def validate(self, value):
         if self.wrapped_func:

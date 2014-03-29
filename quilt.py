@@ -14,6 +14,9 @@ class ProxyCache(object):
     def __get__(self, instance=None, owner=None):
         return FunctionProxy(self, instance, owner)
 
+    def __iter__(self):
+        return iter(self.cache)
+
     def append(self, value):
         self.cache.append(value)
         self.most_recent = value
