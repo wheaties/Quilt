@@ -107,6 +107,7 @@ class FuncPattern(Pattern):
     def __call__(self, func):
         guarded = super(FuncPattern, self).__call__(func)
         #TODO: figure out how to load into a module later...
+        #TODO: figure out how to handle closure too and differentiate between module
 
         return guarded
 
