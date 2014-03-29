@@ -33,14 +33,7 @@ def _kwarg_pattern(kwargs):
     return kwarg_guards
 
 
-def pattern(*args, **kwargs):
-    arg_guards = _arg_pattern(args)
-    kwarg_guards = _kwarg_pattern(kwargs)
-
-    return Pattern(arg_guards, kwarg_guards)
-
-
-#TODO: Do I need a @class_pattern and a regular @pattern to differentiate between modules and classes?
+#TODO: Do I need a @modulepattern, @staticpattern and @pattern to differentiate between modules, statics and classes?
 #TODO: If so, look into making @pattern work on the module itself!
 class Pattern(Guard):
     def __init__(self, arg_guards, kwarg_guards, arg_name=None, arg_pos=None):
@@ -62,15 +55,29 @@ class Pattern(Guard):
     def __call__(self, func):
         (arg_names, varg_name, kwarg_name, _) = getargspec(func) # This returns the self argument as well as the others!
         found_names = set()
+        found_names.update(self._name_arg_guards(arg_names))
+        found_names.update(self._position_kwarg_guards(arg_names))
+
+        return self._create_guarded(arg_names, found_names, func)
+
+    def _name_arg_guards(self, arg_names):
+        names = []
         for (name, guard) in zip(arg_names, self.arg_guards):
             guard.arg_name = name
-            found_names.add(name)
+            names.append(name)
 
+        return names
+
+    def _position_kwarg_guards(self, arg_names):
+        names = []
         for guard in self.kwarg_guards:
             if guard.arg_name in arg_names:
                 guard.arg_pos = arg_names.index(guard.arg_name)
-                found_names.add(guard.arg_name)
+                names.append(guard.arg_name)
 
+        return names
+
+    def _create_guarded(self, arg_names, found_names, func):
         guarded = GuardedFunction(func)
         held_guards = []
         for i, name in enumerate(arg_names):
@@ -86,40 +93,52 @@ class Pattern(Guard):
         return guarded
 
 
-def class_pattern(*args, **kwargs):
+def func_pattern(*args, **kwargs):
     arg_guards = _arg_pattern(args)
     kwarg_guards = _kwarg_pattern(kwargs)
 
-    return ClassPattern(arg_guards, kwarg_guards)
+    return FuncPattern(arg_guards, kwarg_guards)
 
 
-class ClassPattern(Pattern):
+class FuncPattern(Pattern):
+    def __init__(self, arg_guards, kwarg_guards):
+        super(FuncPattern, self).__init__(arg_guards, kwarg_guards)
+
+    def __call__(self, func):
+        guarded = super(FuncPattern, self).__call__(func)
+        #TODO: figure out how to load into a module later...
+
+        return guarded
+
+
+#TODO: This might be confused with same nomenclature as @classmethod
+def pattern(*args, **kwargs):
+    arg_guards = _arg_pattern(args)
+    kwarg_guards = _kwarg_pattern(kwargs)
+
+    return MemberFunctionPattern(arg_guards, kwarg_guards)
+
+
+class MemberFunctionPattern(Pattern):
+    def __init__(self, arg_guards, kwarg_guards):
+        super(MemberFunctionPattern, self).__init__(arg_guards, kwarg_guards)
+
     def __call__(self, func):
         (arg_names, varg_name, kwarg_name, _) = getargspec(func) # This returns the self argument as well as the others!
         arg_names = arg_names[1:]
         found_names = set()
-        for (name, guard) in zip(arg_names, self.arg_guards):
-            guard.arg_name = name
-            found_names.add(name)
+        found_names.update(self._name_arg_guards(arg_names))
+        found_names.update(self._position_kwarg_guards(arg_names))
 
-        for guard in self.kwarg_guards:
-            if guard.arg_name in arg_names:
-                guard.arg_pos = arg_names.index(guard.arg_name)
-                found_names.add(guard.arg_name)
+        return self._create_guarded(arg_names, found_names, func)
 
-        guarded = GuardedFunction(func)
-        held_guards = []
-        for i, name in enumerate(arg_names):
-            if name not in found_names:
-                holder = PlaceholderGuard(arg_name=name, arg_pos=i)
-                setattr(guarded, name, holder)
-                held_guards.append(holder)
 
-        guarded.arg_guards = sorted(chain(self.arg_guards, self.kwarg_guards, held_guards), key=lambda x: x.arg_pos)
-        guarded.kwarg_guards = {(g.arg_name, g) for g in chain(self.arg_guards, self.kwarg_guards, held_guards)}
-        update_wrapper(guarded, func)
+#TODO: Test! May need to wrap it with a @staticmethod call...?
+def staticpattern(*args, **kwargs):
+    arg_guards = _arg_pattern(args)
+    kwarg_guards = _kwarg_pattern(kwargs)
 
-        return guarded
+    return Pattern(arg_guards, kwarg_guards)
 
 
 class GuardedFunction(object):

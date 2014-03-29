@@ -9,7 +9,7 @@ class Guard(object):
         self.arg_pos = arg_pos
 
     def validate(self, value):
-        return True
+        raise NotImplementedError
 
     def __str__(self):
         return self.__name__ + '(arg_name=' + str(self.arg_name)  + ', arg_pos=' + str(self.arg_pos) + ')'
@@ -95,6 +95,9 @@ class _Guard(object):
 
     def __eq__(self, other):
         return ValueGuard(other)
+
+    def __ne__(self, other):
+        return OperatorGuard(operator.ne, other)
 
 
 guard = _Guard()

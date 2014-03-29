@@ -2,7 +2,7 @@ __author__ = 'Owein'
 
 import unittest
 from quilt import *
-from pattern import GuardedFunction, pattern, class_pattern
+from pattern import GuardedFunction, pattern
 from guard import guard
 
 
@@ -49,25 +49,25 @@ class ProxyDictTest(unittest.TestCase):
 
 
 class FooPattern(Quilt):
-            @class_pattern(guard < 0)
-            def yo(self, x):
-                return x*x
+    @pattern(guard < 0)
+    def yo(self, x):
+        return x*x
 
-            @class_pattern(guard == 0)
-            def yo(self, x):
-                return 0
+    @pattern(guard == 0)
+    def yo(self, x):
+        return 0
 
-            @class_pattern(1)
-            def yo(self, x):
-                return 11
+    @pattern(1)
+    def yo(self, x):
+        return 11
 
-            @class_pattern(x=2)
-            def yo(self, x):
-                return -7
+    @pattern(x=2)
+    def yo(self, x):
+        return -7
 
-            @class_pattern(guard > 2)
-            def yo(self, x):
-                return x
+    @pattern(guard > 2)
+    def yo(self, x):
+        return x
 
 
 class QuiltTest(unittest.TestCase):
