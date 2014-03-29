@@ -5,6 +5,20 @@ from guard import guard
 from unittest import TestCase
 
 
+# class TestGuardType(TestCase):
+#     def test_non(self):
+#         g = _guard_type(1)
+#         self.assertIsInstance(g, Guard)
+#
+#     def test_pattern(self):
+#         g = _guard_type(Pattern([],[]))
+#         self.assertIsInstance(g, Guard)
+#
+#     def test_guard(self):
+#         g = _guard_type(guard < 1)
+#         self.assertIsInstance(g, Guard)
+
+
 class PatternTest(TestCase):
     def test_validate1(self):
         pat = pattern(x=1)
@@ -61,8 +75,6 @@ class PatternTest(TestCase):
         @pattern(x=guard < 0)
         def that(x):
             return x
-
-        print(that.kwarg_guards) #TODO: grumbles...
 
         self.assertEquals(that(-1), -1)
         self.assertRaises(TypeError, lambda: that(2))

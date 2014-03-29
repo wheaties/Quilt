@@ -7,7 +7,7 @@ from functools import update_wrapper
 
 
 def _guard_type(guard):
-    if type(Guard) == type(guard):
+    if isinstance(guard, Guard):
         return guard
     else:
         return ValueGuard(guard)
