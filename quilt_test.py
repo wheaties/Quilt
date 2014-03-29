@@ -2,7 +2,8 @@ __author__ = 'Owein'
 
 import unittest
 from quilt import *
-from pattern import GuardedFunction
+from pattern import GuardedFunction, pattern
+from guard import guard
 
 
 class ProxyCacheTest(unittest.TestCase):
@@ -22,7 +23,14 @@ class ProxyCacheTest(unittest.TestCase):
 
         self.assertIsInstance(proxy, FunctionProxy)
 
-    def test_get_attr
+    def test_get_attr(self):
+        class T(object):
+            x = 1
+
+        item = T()
+        cache = ProxyCache(item)
+        self.assertEquals(cache.x, 1)
+
 
 class ProxyDictTest(unittest.TestCase):
     def test_setguarded(self):
@@ -38,3 +46,45 @@ class ProxyDictTest(unittest.TestCase):
         cache[2] = 5
 
         self.assertEquals(cache[2], 5)
+
+
+class FooPattern(Quilt):
+            @pattern(guard < 0)
+            def yo(self, x):
+                return x*x
+
+            @pattern(guard == 0)
+            def yo(self, x):
+                return 0
+
+            @pattern(1)
+            def yo(self, x):
+                return 11
+
+            @pattern(x=2)
+            def yo(self, x):
+                return -7
+
+            @pattern(guard > 2)
+            def yo(self, x):
+                return x
+
+
+class QuiltTest(unittest.TestCase):
+    def setUp(self):
+        self.foo = FooPattern()
+
+    def test_pattern1(self):
+        self.assertEquals(self.foo.yo(0), 0)
+
+    def test_pattern2(self):
+        self.assertEquals(self.foo.yo(-2), 4)
+
+    def test_pattern3(self):
+        self.assertEquals(self.foo.yo(3), 3)
+
+    def test_pattern4(self):
+        self.assertEquals(self.foo.yo(2), -7)
+
+    def test_pattern5(self):
+        self.assertEquals(self.foo.yo(1), 11)

@@ -30,7 +30,7 @@ class ProxyDict(dict):
             super(ProxyDict, self).__setitem__(key, value)
 
 
-class QuiltType(type):
+class QuiltMeta(type):
     @classmethod  # or should be @staticmethod?
     def __prepare__(cls, *args, **kwargs):
         return ProxyDict()
@@ -39,5 +39,5 @@ class QuiltType(type):
         return type.__new__(cls, name, bases, dict(namespace))
 
 
-class Quilt(metaclass=QuiltType):
+class Quilt(metaclass=QuiltMeta):
     pass

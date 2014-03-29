@@ -21,7 +21,7 @@ def pattern(*args, **kwargs):
         arg_guards.append(guarded)
 
     kwarg_guards = []
-    for kw, guard in kwargs:
+    for kw, guard in kwargs.items():
         guarded = _guard_type(guard)
         guarded.arg_name = kw
         kwarg_guards.append(guarded)
@@ -88,6 +88,11 @@ class GuardedFunction(object):
     def validate(self, *args, **kwargs):
         return all(guard.validate(arg) for (arg, guard) in zip(args, self.arg_guards)) and \
             all(self.kwarg_guards[kw].validate(arg) for (kw, arg) in kwargs if kw in self.kwarg_guards)
+
+    def __call__(self, *args, **kwargs):
+        if self.validate(*args, **kwargs):
+            return self.underlying_func(*args, **kwargs)
+        raise TypeError('Function not defined for', *args, **kwargs)
 
 
 class FunctionProxy(object):
