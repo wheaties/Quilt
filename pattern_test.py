@@ -85,4 +85,12 @@ class PatternTest(TestCase):
             return 1
 
         self.assertEquals(that(1), 1) #TODO: how is this passing?
-        self.assertRaises(TypeError, lambda: that(2)) #but this isn't?
+        self.assertEquals(that(2), 1) #but this isn't?
+
+    def test_call6(self):
+        @pattern(guard == 3)
+        def that(x):
+            return 1
+
+        self.assertEquals(that(3), 1)
+        self.assertRaises(TypeError, lambda: that(1))

@@ -4,6 +4,7 @@ from guard import Guard, ValueGuard, PlaceholderGuard
 from itertools import chain
 from inspect import getargspec
 from functools import update_wrapper
+from collections import defaultdict
 
 
 def _guard_type(guard):
@@ -33,8 +34,6 @@ def _kwarg_pattern(kwargs):
     return kwarg_guards
 
 
-#TODO: Do I need a @modulepattern, @staticpattern and @pattern to differentiate between modules, statics and classes?
-#TODO: If so, look into making @pattern work on the module itself!
 class Pattern(Guard):
     def __init__(self, arg_guards, kwarg_guards, arg_name=None, arg_pos=None):
         super(Pattern, self).__init__(arg_name, arg_pos)
@@ -93,11 +92,28 @@ class Pattern(Guard):
         return guarded
 
 
-def func_pattern(*args, **kwargs):
+def defpattern(*args, **kwargs):
     arg_guards = _arg_pattern(args)
     kwarg_guards = _kwarg_pattern(kwargs)
 
     return FuncPattern(arg_guards, kwarg_guards)
+
+
+def _wrap_closure(func, guarded):
+    try:
+        quilted = func.__closure__.__quilt__[func.__name__]
+    except AttributeError:
+        setattr(func.__closure__, '__quilt__', defaultdict(list))
+        quilted = func.__closure__.__quilt__[func.__name__]
+
+    quilted.append(guarded)
+    proxy = FunctionProxy(quilted)
+
+    def matched(*args, **kwargs):
+        return proxy(*args, **kwargs)
+    update_wrapper(matched, func)
+
+    return matched
 
 
 class FuncPattern(Pattern):
@@ -106,10 +122,12 @@ class FuncPattern(Pattern):
 
     def __call__(self, func):
         guarded = super(FuncPattern, self).__call__(func)
-        #TODO: figure out how to load into a module later...
-        #TODO: figure out how to handle closure too and differentiate between module
+        if func.__closure__:
+            return _wrap_closure(func, guarded)
+        else:
+            #TODO: figure out how to load into a module later...
 
-        return guarded
+            return guarded
 
 
 #TODO: This might be confused with same nomenclature as @classmethod

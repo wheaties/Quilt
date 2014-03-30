@@ -123,3 +123,11 @@ class PlaceholderGuard(Guard):
 
     def __call__(self, func):
         self.wrapped_func = func
+
+
+#TODO: Add the following:
+# 1. _Length with a length var
+# 2. one_of
+# 3. contains
+# 4. __and__ and __or__ to guard
+# 5. close_to(x, error-bound)
