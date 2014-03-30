@@ -14,12 +14,15 @@ class Guard(object):
     def __str__(self):
         return self.__name__ + '(arg_name=' + str(self.arg_name)  + ', arg_pos=' + str(self.arg_pos) + ')'
 
-    def __repr__(self):
-        return self.__str__()
-
     @property
     def __name__(self):
         return 'Guard'
+
+    def __and__(self, other):
+        return AndGuard(self, other)
+
+    def __or__(self, other):
+        return OrGuard(self, other)
 
     def validate_object(self, obj):
         try:
@@ -30,11 +33,41 @@ class Guard(object):
             return False
 
 
+class CompoundGuard(Guard):
+    def __init__(self, primary, secondary):
+        super(ConditionalGuard, self).__init__(primary.arg_name or secondary.arg_name, primary.arg_pos or secondary.arg_pos)
+        self.primary = primary
+        self.secondary = secondary
+
+    @property
+    def __name__(self):
+        return 'And[' + self.primary.__name__ + ', ' + self.secondary.__name__ + ']'
+
+
+class AndGuard(CompoundGuard):
+    def __init__(self, primary, secondary):
+        super(AndGuard, self).__init__(primary, secondary)
+
+    def validate(self, value):
+        return self.primary.validate(value) and self.secondary.validate(value)
+
+
+class OrGuard(CompoundGuard):
+    def __init__(self, primary, secondary):
+        super(OrGuard, self).__init__(primary, secondary)
+
+    def validate(self, value):
+        return self.primary.validate(value) or self.secondary.validate(value)
+
+
 class OperatorGuard(Guard):
     def __init__(self, op, value, arg_name=None, arg_pos=None):
         super(OperatorGuard, self).__init__(arg_name, arg_pos)
         self.op = op
         self.value = value
+
+    def __repr__(self):
+        return self.__name__ + ' operator: ' + repr(type(self.op)) + ' against: ' + repr(self.value)
 
     def validate(self, value):
         return self.op(value, self.value)
@@ -59,6 +92,10 @@ class ConditionalGuard(Guard):
     def __init__(self, arg_name=None, arg_pos=None):
         super(ConditionalGuard, self).__init__(arg_name, arg_pos)
         self.checks = []
+
+    @property
+    def __name__(self):
+        return 'Guard[' + ','.join(x.__name__ for x in self.checks) + ']'
 
     def __le__(self, other):
         self.checks.append(OperatorGuard(operator.le, other))

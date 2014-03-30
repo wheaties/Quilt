@@ -100,11 +100,12 @@ def defpattern(*args, **kwargs):
 
 
 def _wrap_closure(func, guarded):
+    closure = func.__closure__[0]
     try:
-        quilted = func.__closure__.__quilt__[func.__name__]
+        quilted = closure.__quilt__[func.__name__]
     except AttributeError:
-        setattr(func.__closure__, '__quilt__', defaultdict(list))
-        quilted = func.__closure__.__quilt__[func.__name__]
+        setattr(closure, '__quilt__', defaultdict(list))
+        quilted = closure.__quilt__[func.__name__]
 
     quilted.append(guarded)
     proxy = FunctionProxy(quilted)
