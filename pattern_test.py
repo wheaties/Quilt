@@ -1,9 +1,8 @@
 __author__ = 'Owein'
 
 from pattern import *
-from guard import guard
 from unittest import TestCase
-
+from guard import lt
 
 # class TestGuardType(TestCase):
 #     def test_non(self):
@@ -32,7 +31,7 @@ class PatternTest(TestCase):
         self.assertFalse(pat.validate(Bar()))
 
     def test_validate2(self):
-        pat = pattern(guard == 1)
+        pat = pattern(1)
 
         self.assertFalse(pat.validate(object()))
 
@@ -42,7 +41,7 @@ class PatternTest(TestCase):
         self.assertFalse(pat.validate(object()))
 
     def test_validate4(self):
-        pat = pattern(x=guard == 1)
+        pat = pattern(x=1)
         class Foo(object):
             x = 1
 
@@ -72,7 +71,7 @@ class PatternTest(TestCase):
         self.assertRaises(TypeError, lambda: that(2))
 
     def test_call4(self):
-        @pattern(x=guard < 0)
+        @pattern(x=lt(0))
         def that(x):
             return x
 
@@ -88,7 +87,7 @@ class PatternTest(TestCase):
         self.assertEquals(that(2), 1) #but this isn't?
 
     def test_call6(self):
-        @pattern(guard == 3)
+        @pattern(3)
         def that(x):
             return 1
 
