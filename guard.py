@@ -37,7 +37,7 @@ class Guard(object):
             value = it[self.arg_pos]
 
             return self.validate(value)
-        except (KeyError, TypeError):
+        except (KeyError, IndexError, TypeError):
             return False
 
 
@@ -197,7 +197,7 @@ class ContainsGuard(Guard):
         self.iterable = iterable
 
     def validate(self, value):
-        return all(value.contains(x) for x in self.iterable)
+        return all(x in value for x in self.iterable)
 
     @property
     def __name__(self):
@@ -240,11 +240,11 @@ def shorter_than(x):
 
 
 def not_longer_than(x):
-    return LengthGuard(x, operator.lte)
+    return LengthGuard(x, operator.le)
 
 
 def not_shorter_than(x):
-    return LengthGuard(x, operator.gte)
+    return LengthGuard(x, operator.ge)
 
 
 class PlaceholderGuard(Guard):
