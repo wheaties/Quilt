@@ -8,14 +8,17 @@ class Guard(object):
         self.arg_name = arg_name
         self.arg_pos = arg_pos
 
+    def and_(self, guard):
+        return AndGuard(self, guard)
+
+    def or_(self, guard):
+        return OrGuard(self, guard)
+
     def validate(self, value):
         raise NotImplementedError
 
     def __str__(self):
-        return self.__name__ + '(arg_name=' + str(self.arg_name)  + ', arg_pos=' + str(self.arg_pos) + ')'
-
-    def __neg__(self):
-        return ReverseGuard(self)
+        return self.__name__ + '(arg_name=' + str(self.arg_name) + ', arg_pos=' + str(self.arg_pos) + ')'
 
     @property
     def __name__(self):
@@ -61,6 +64,40 @@ class ReverseGuard(Guard):
         return 'Reversed' + repr(self.inner)
 
 
+class AndGuard(Guard):
+    def __init__(self, first, second):
+        super(AndGuard, self).__init__(first.arg_name or second.arg_name, first.arg_pos or second.arg_pos)
+        self.first = first
+        self.second = second
+
+    def validate(self, value):
+        return self.first.validate(value) and self.second.validate(value)
+
+    @property
+    def __name__(self):
+        return 'And[' + self.first.__name__ + ',' + self.second.__name__ + ']'
+
+    def __repr__(self):
+        return 'And[' + repr(self.first) + ',' + repr(self.second) + ']'
+
+
+class OrGuard(Guard):
+    def __init__(self, first, second):
+        super(OrGuard, self).__init__(first.arg_name or second.arg_name, first.arg_pos or second.arg_pos)
+        self.first = first
+        self.second = second
+
+    def validate(self, value):
+        return self.first.validate(value) or self.second.validate(value)
+
+    @property
+    def __name__(self):
+        return 'Or[' + self.first.__name__ + ',' + self.second.__name__ + ']'
+
+    def __repr__(self):
+        return 'Or[' + repr(self.first) + ',' + repr(self.second) + ']'
+
+
 class OperatorGuard(Guard):
     def __init__(self, op, value, arg_name=None, arg_pos=None):
         super(OperatorGuard, self).__init__(arg_name, arg_pos)
@@ -86,11 +123,13 @@ class ValueGuard(Guard):
 def less_than(value):
     return OperatorGuard(operator.lt, value)
 
+
 lt = less_than
 
 
 def less_than_or_equal(value):
     return OperatorGuard(operator.le, value)
+
 
 le = less_than_or_equal
 lte = le
@@ -99,26 +138,113 @@ lte = le
 def greater_than(value):
     return OperatorGuard(operator.gt, value)
 
+
 gt = greater_than
 
 
 def greater_than_or_equal(value):
     return OperatorGuard(operator.ge, value)
 
+
 ge = greater_than_or_equal
 gte = ge
+not_less_than = greater_than_or_equal
+not_greater_than = less_than_or_equal
 
 
 def equal_to(value):
     return ValueGuard(value)
 
+
 eq = equal_to
 
 
 def not_equal_to(value):
-    return not ValueGuard(value)
+    return ReverseGuard(equal_to(value))
+
 
 ne = not_equal_to
+
+
+class OneOfGuard(Guard):
+    def __init__(self, iterable):
+        self.iterable = iterable
+
+    def validate(self, value):
+        return value in self.iterable
+
+    @property
+    def __name__(self):
+        return 'OneOfGuard'
+
+    def __repr__(self):
+        return super(OneOfGuard, self).__repr__() + ' containing ' + ','.join(self.iterable)
+
+
+def one_of(*args):
+    if len(args) == 1 and hasattr(args[0], '__iter__'):
+        return OneOfGuard(args[0])
+    else:
+        return OneOfGuard(args)
+
+
+def not_one_of(*args):
+    return ReverseGuard(one_of(*args))
+
+
+class ContainsGuard(Guard):
+    def __init__(self, iterable):
+        self.iterable = iterable
+
+    def validate(self, value):
+        return all(value.contains(x) for x in self.iterable)
+
+    @property
+    def __name__(self):
+        return 'ContainsGuard'
+
+    def __repr__(self):
+        return super(ContainsGuard, self).__repr__() + ' within ' + ','.join(self.iterable)
+
+
+def contains(*args):
+    if len(args) == 1 and hasattr(args[0], '__iter__'):
+        return ContainsGuard(args[0])
+    else:
+        return ContainsGuard(args)
+
+
+def not_contains(*args):
+    return ReverseGuard(contains(*args))
+
+
+class LengthGuard(Guard):
+    def __init__(self, length, op):
+        self.length = length
+        self.op = op
+
+    def validate(self, value):
+        return self.op(len(value), self.length)
+
+
+def has_length(x):
+    return LengthGuard(x, operator.eq)
+
+
+def longer_than(x):
+    return LengthGuard(x, operator.gt)
+
+
+def shorter_than(x):
+    return LengthGuard(x, operator.lt)
+
+
+def not_longer_than(x):
+    return LengthGuard(x, operator.lte)
+
+
+def not_shorter_than(x):
+    return LengthGuard(x, operator.gte)
 
 
 class PlaceholderGuard(Guard):
@@ -144,7 +270,4 @@ class PlaceholderGuard(Guard):
 
 
 #TODO: Add the following:
-# 1. _Length with a length var
-# 2. one_of
-# 3. contains
-# 5. close_to(x, error-bound)
+# 1. close_to(x, error-bound)

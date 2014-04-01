@@ -24,6 +24,17 @@ class GuardTest(TestCase):
 
         self.assertTrue(g.validate_object(Foo()))
 
+    # def test_neg(self):
+    #     g = _Yo('y')
+    #     self.assertTrue(g.validate_object(object()))
+    #
+    # def test_neg_no_attr(self):
+    #     g = not _Yo('x')
+    #     class Foo(object):
+    #         x = 1
+    #
+    #     self.assertTrue(g.validate_object(Foo()))
+
 
 class OperatorGuardTest(TestCase):
     def test_less(self):
