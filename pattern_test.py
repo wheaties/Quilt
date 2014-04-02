@@ -2,22 +2,10 @@ __author__ = 'Owein'
 
 from pattern import *
 from unittest import TestCase
-from guard import lt
-
-# class TestGuardType(TestCase):
-#     def test_non(self):
-#         g = _guard_type(1)
-#         self.assertIsInstance(g, Guard)
-#
-#     def test_pattern(self):
-#         g = _guard_type(Pattern([],[]))
-#         self.assertIsInstance(g, Guard)
-#
-#     def test_guard(self):
-#         g = _guard_type(guard < 1)
-#         self.assertIsInstance(g, Guard)
+from guard import lt, gt
 
 
+#You know, this is really not testing @pattern!
 class PatternTest(TestCase):
     def test_validate1(self):
         pat = pattern(x=1)
@@ -93,3 +81,26 @@ class PatternTest(TestCase):
 
         self.assertEquals(that(3), 1)
         self.assertRaises(TypeError, lambda: that(1))
+
+
+class TestDefPattern(TestCase):
+    def test_call1(self):
+        @defpattern(x=1)
+        def test(x):
+            return x
+
+        self.assertEquals(test(1), 1)
+        self.assertRaises(TypeError, lambda: test(2))
+
+    def test_stacked_call(self):
+        @defpattern(1)
+        def test(x):
+            return 1
+
+        @defpattern(x=4)
+        def test(x=gt(4)):
+            return 2*x
+
+        self.assertEquals(test(1), 1)
+        self.assertEquals(test(5), 10)
+        self.assertRaises(TypeError, lambda: test(0))

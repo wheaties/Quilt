@@ -87,14 +87,6 @@ class OperatorGuardTest(TestCase):
         self.assertTrue(g.validate(0))
         self.assertFalse(g. validate(-1))
 
-    # def test_range(self):
-    #     g = 0 < guard < 3
-    #
-    #     print(g)
-    #
-    #     self.assertTrue(g.validate(2))
-    #     self.assertFalse(g.validate(0))
-    #     self.assertFalse(g.validate(3))
 
 class TestAndOrGuard(TestCase):
     def test_and(self):
