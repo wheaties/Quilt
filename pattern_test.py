@@ -82,6 +82,19 @@ class PatternTest(TestCase):
         self.assertEquals(that(3), 1)
         self.assertRaises(TypeError, lambda: that(1))
 
+    def test_placement(self):
+        @pattern(x=1)
+        def yoyo(x, z):
+            return x+z
+
+        @yoyo.z
+        def arr(z):
+            return z < 0
+
+        self.assertEquals(yoyo(x=1, z=-1), 0)
+        self.assertRaises(TypeError, lambda: yoyo(x=0, z=-1))
+        self.assertRaises(TypeError, lambda: yoyo(x=1, z=1))
+
 
 class TestDefPattern(TestCase):
     def test_call1(self):
@@ -97,10 +110,77 @@ class TestDefPattern(TestCase):
         def test(x):
             return 1
 
-        @defpattern(x=4)
-        def test(x=gt(4)):
+        @defpattern(x=gt(4))
+        def test(x):
             return 2*x
 
         self.assertEquals(test(1), 1)
         self.assertEquals(test(5), 10)
         self.assertRaises(TypeError, lambda: test(0))
+
+
+class TestDefProxy(TestCase):
+    def test_name(self):
+        def yoyo(x):
+            return 1
+
+        proxy = DefProxy([yoyo], yoyo)
+        self.assertEquals(proxy.__name__, 'yoyo')
+
+    def test_module(self):
+        def yoyo(x):
+            return 1
+
+        proxy = DefProxy([yoyo], yoyo)
+        self.assertEquals(proxy.__module__, 'pattern_test')
+
+    def test_get_attr(self):
+        class Yo(object):
+            x = 1
+            y = 2
+
+        proxy = DefProxy([], Yo())
+        self.assertEquals(proxy.x, 1)
+        self.assertEquals(proxy.y, 2)
+
+    def test_call(self):
+        class Yo(object):
+            def __init__(self):
+                self.underlying_func = lambda x: 1
+            def validate(self, x):
+                return True
+
+        proxy = DefProxy([Yo()], None)
+        self.assertEquals(proxy(4), 1)
+
+
+class TestFunctionProxy(TestCase):
+    def test_get_attr(self):
+        class Yo(object):
+            x = 1
+            y = 2
+        class MCache(object):
+            most_recent = Yo()
+
+        proxy = FunctionProxy(MCache())
+        self.assertEquals(proxy.x, 1)
+        self.assertEquals(proxy.y, 2)
+
+    def test_call(self):
+        class Cont(object):
+            def __init__(self, f):
+                self.f = f
+            def __get__(self, instance, owner):
+                return self.f
+
+        class VV(object):
+            def __init__(self, f, that=True):
+                self.underlying_func = Cont(f)
+                self.that = that
+            def validate(self, x):
+                return self.that
+
+        one = VV(lambda x: 2, False)
+        two = VV(lambda x: 1)
+        proxy = FunctionProxy([one, two])
+        self.assertEquals(proxy(1), 1)

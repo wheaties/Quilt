@@ -213,3 +213,6 @@ class TestPlaceholderGuard(TestCase):
 
         self.assertFalse(g.validate(4))
         self.assertTrue(g.validate(0))
+
+
+#TODO: Need to test against def(self, x): wherein self argument really does matter!

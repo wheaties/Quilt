@@ -85,8 +85,9 @@ class Pattern(Guard):
                 setattr(guarded, name, holder)
                 held_guards.append(holder)
 
-        guarded.arg_guards = sorted(chain(self.arg_guards, self.kwarg_guards, held_guards), key=lambda x: x.arg_pos)
-        guarded.kwarg_guards = {(g.arg_name, g) for g in chain(self.arg_guards, self.kwarg_guards, held_guards)}
+        chained_guard_pos = (x for x in chain(self.arg_guards, self.kwarg_guards, held_guards) if x.arg_pos is not None)
+        guarded.arg_guards = sorted(chained_guard_pos, key=lambda x: x.arg_pos)
+        guarded.kwarg_guards = {(g.arg_name, g) for g in chain(self.arg_guards, self.kwarg_guards, held_guards) if g.arg_name is not None}
         update_wrapper(guarded, func)
 
         return guarded
@@ -99,22 +100,17 @@ def defpattern(*args, **kwargs):
     return FuncPattern(arg_guards, kwarg_guards)
 
 
-def _wrap_closure(func, guarded):
-    closure = func.__closure__[0]
-    try:
-        quilted = closure.__quilt__[func.__name__]
-    except AttributeError:
-        setattr(closure, '__quilt__', defaultdict(list))
-        quilted = closure.__quilt__[func.__name__]
+#Wow, really don't like this. Figure out way to sticky attach to the actual module.
+global_registry = {}
 
-    quilted.append(guarded)
-    proxy = FunctionProxy(quilted)
 
-    def matched(*args, **kwargs):
-        return proxy(*args, **kwargs)
-    update_wrapper(matched, func)
+def _register_proxy(func, guarded):
+    if not func.__module__ in global_registry:
+        global_registry[func.__module__] = defaultdict(list)
+    module_func_reg = global_registry[func.__module__][func.__name__]
+    module_func_reg.append(guarded)
 
-    return matched
+    return DefProxy(module_func_reg, guarded)
 
 
 class FuncPattern(Pattern):
@@ -123,15 +119,9 @@ class FuncPattern(Pattern):
 
     def __call__(self, func):
         guarded = super(FuncPattern, self).__call__(func)
-        if func.__closure__:
-            return _wrap_closure(func, guarded)
-        else:
-            #TODO: figure out how to load into a module later...
-
-            return guarded
+        return _register_proxy(func, guarded)
 
 
-#TODO: This might be confused with same nomenclature as @classmethod
 def pattern(*args, **kwargs):
     arg_guards = _arg_pattern(args)
     kwarg_guards = _kwarg_pattern(kwargs)
@@ -175,11 +165,11 @@ class GuardedFunction(object):
         return str(self.underlying_func)
 
     def __repr__(self):
-        return repr(self.underlying_func)
+        return repr(self.underlying_func) + ' guarded by ' + ','.join(map(repr, self.arg_guards))
 
     def validate(self, *args, **kwargs):
         return all(guard.validate(arg) for (arg, guard) in zip(args, self.arg_guards)) and \
-            all(self.kwarg_guards[kw].validate(arg) for (kw, arg) in kwargs if kw in self.kwarg_guards)
+            all(self.kwarg_guards[kw].validate(arg) for (kw, arg) in kwargs.items() if kw in self.kwarg_guards)
 
     def __call__(self, *args, **kwargs):
         if self.validate(*args, **kwargs):
@@ -200,10 +190,43 @@ class FunctionProxy(object):
         return 'FunctionProxy' + str(self.proxy_cache.cache)
 
     def __repr__(self):
-        return 'FunctionProxy' + repr(self.proxy_cache.cache)
+        return 'FunctionProxy' + ''.join(map(repr, self.proxy_cache))
 
     def __call__(self, *args, **kwargs):
         for guarded_func in self.proxy_cache:
             if guarded_func.validate(*args, **kwargs):
                 return guarded_func.underlying_func.__get__(self.instance, self.owner)(*args, **kwargs)
+        raise TypeError('No matching function for', *args, **kwargs)
+
+
+class DefProxy(object):
+    def __init__(self, proxy_cache, most_recent):
+        self.proxy_cache = proxy_cache
+        self.most_recent = most_recent
+
+    @property
+    def __name__(self):
+        return self.most_recent.__name__
+
+    @property
+    def __module__(self):
+        return self.most_recent.__module__
+
+    @property
+    def __closure__(self):
+        return None
+
+    def __getattr__(self, item):
+        return getattr(self.most_recent, item)
+
+    def __str__(self):
+        return 'DefProxy' + str(self.proxy_cache)
+
+    def __repr__(self):
+        return 'DefProxy' + ''.join(map(repr, self.proxy_cache))
+
+    def __call__(self, *args, **kwargs):
+        for guarded_func in self.proxy_cache:
+            if guarded_func.validate(*args, **kwargs):
+                return guarded_func.underlying_func(*args, **kwargs)
         raise TypeError('No matching function for', *args, **kwargs)
