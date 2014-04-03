@@ -55,24 +55,24 @@ class PatternTest(TestCase):
         def that(x):
             return 1
 
-        self.assertEquals(that(1), 1)
-        self.assertRaises(TypeError, lambda: that(2))
+        self.assertEquals(that(x=1), 1)
+        self.assertRaises(TypeError, lambda: that(x=2))
 
     def test_call4(self):
         @pattern(x=lt(0))
         def that(x):
             return x
 
-        self.assertEquals(that(-1), -1)
-        self.assertRaises(TypeError, lambda: that(2))
+        self.assertEquals(that(x=-1), -1)
+        self.assertRaises(TypeError, lambda: that(x=2))
 
     def test_call5(self):
         @pattern(y=1)
         def that(x):
             return 1
 
-        self.assertEquals(that(1), 1) #TODO: how is this passing?
-        self.assertEquals(that(2), 1) #but this isn't?
+        self.assertEquals(that(x=1), 1)
+        self.assertEquals(that(x=2), 1)
 
     def test_call6(self):
         @pattern(3)
@@ -117,6 +117,15 @@ class TestDefPattern(TestCase):
         self.assertEquals(test(1), 1)
         self.assertEquals(test(5), 10)
         self.assertRaises(TypeError, lambda: test(0))
+
+    def test_module(self):
+        from importlib import import_module
+        @defpattern()
+        def la():
+            return 1
+
+        module = import_module(la.__module__)
+        self.assertTrue(hasattr(module, '__quilt__'))
 
 
 class TestDefProxy(TestCase):

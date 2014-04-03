@@ -5,6 +5,7 @@ from itertools import chain
 from inspect import getargspec
 from functools import update_wrapper
 from collections import defaultdict
+from importlib import import_module
 
 
 def _guard_type(guard):
@@ -100,14 +101,12 @@ def defpattern(*args, **kwargs):
     return FuncPattern(arg_guards, kwarg_guards)
 
 
-#Wow, really don't like this. Figure out way to sticky attach to the actual module.
-global_registry = {}
-
-
+#TODO: Figure out how to work around nested functions within functions without registering to the whole module
 def _register_proxy(func, guarded):
-    if not func.__module__ in global_registry:
-        global_registry[func.__module__] = defaultdict(list)
-    module_func_reg = global_registry[func.__module__][func.__name__]
+    module = import_module(func.__module__)
+    if not hasattr(module, '__quilt__'):
+        setattr(module, '__quilt__', defaultdict(list))
+    module_func_reg = module.__quilt__[func.__name__]
     module_func_reg.append(guarded)
 
     return DefProxy(module_func_reg, guarded)
@@ -141,14 +140,6 @@ class MemberFunctionPattern(Pattern):
         found_names.update(self._position_kwarg_guards(arg_names))
 
         return self._create_guarded(arg_names, found_names, func)
-
-
-#TODO: Test! May need to wrap it with a @staticmethod call...?
-def staticpattern(*args, **kwargs):
-    arg_guards = _arg_pattern(args)
-    kwarg_guards = _kwarg_pattern(kwargs)
-
-    return Pattern(arg_guards, kwarg_guards)
 
 
 class GuardedFunction(object):
