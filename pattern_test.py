@@ -51,12 +51,13 @@ class PatternTest(TestCase):
         self.assertEquals(that(1), 1)
 
     def test_call3(self):
-        @pattern(x=1)
-        def that(x):
+        @pattern(x=1, y=1)
+        def that(x, y):
             return 1
 
-        self.assertEquals(that(x=1), 1)
-        self.assertRaises(TypeError, lambda: that(x=2))
+        self.assertEquals(that(1,1), 1)
+        self.assertRaises(TypeError, lambda: that(1,2))
+        self.assertRaises(TypeError, lambda: that(2,1))
 
     def test_call4(self):
         @pattern(x=lt(0))
@@ -94,6 +95,51 @@ class PatternTest(TestCase):
         self.assertEquals(yoyo(x=1, z=-1), 0)
         self.assertRaises(TypeError, lambda: yoyo(x=0, z=-1))
         self.assertRaises(TypeError, lambda: yoyo(x=1, z=1))
+
+
+class TestMemberFuncPattern(TestCase):
+    def setUp(self):
+        self.guard = ValueGuard(1, arg_name='foo')
+        self.pat = MemberFunctionPattern([], [self.guard])
+
+    def tearDown(self):
+        self.guard = None
+        self.pat = None
+
+    def test_call_noparams(self):
+        @self.pat
+        def that():
+            return 1
+
+        self.assertIsNone(self.guard.arg_pos)
+        self.assertEquals(that(), 1)
+
+    def test_oneparam(self):
+        @self.pat
+        def that(foo):
+            return 1
+
+        self.assertIsNone(self.guard.arg_pos)
+        self.assertEquals(that(1), 1)
+
+    def test_several_params(self):
+        @self.pat
+        def that(x, y):
+            return 1
+
+        self.assertIsNone(self.guard.arg_pos)
+        self.assertEquals(that(2, 1), 1)
+
+    def test_params(self):
+        @self.pat
+        def that(x, foo):
+            return 1
+
+        self.assertEquals(self.guard.arg_pos, 0)
+        self.assertEquals(that(1, 1), 1)
+        self.assertEquals(that(x=2, foo=1), 1)
+        self.assertRaises(TypeError, lambda: that(2, 1))
+        self.assertRaises(TypeError, lambda: that(foo=2, x=1))
 
 
 class TestDefPattern(TestCase):
@@ -193,3 +239,8 @@ class TestFunctionProxy(TestCase):
         two = VV(lambda x: 1)
         proxy = FunctionProxy([one, two])
         self.assertEquals(proxy(1), 1)
+
+
+#TODO:
+# 1. Test the actual classes, not just the functions
+# 2. Come up with decent mocks

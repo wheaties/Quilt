@@ -124,6 +124,16 @@ class TestValueGuard(TestCase):
         g = ValueGuard(1)
         self.assertFalse(g.validate('1'))
 
+    def test_position(self):
+        g = ValueGuard(1, arg_pos=1)
+        self.assertTrue(g.validate(1))
+        self.assertFalse(g.validate(2))
+
+    def test_kw(self):
+        g = ValueGuard(1, arg_name='x')
+        self.assertTrue(g.validate(1))
+        self.assertFalse(g.validate(3))
+
 
 class TestOneOfGuard(TestCase):
     def test_empty(self):
@@ -144,6 +154,7 @@ class TestOneOfGuard(TestCase):
     def test_several_args(self):
         g = one_of([1], 2, 3)
         self.assertTrue(g.validate(2))
+        self.assertTrue(g.validate([1]))
         self.assertFalse(g.validate(0))
 
 

@@ -20,6 +20,9 @@ class Guard(object):
     def __str__(self):
         return self.__name__ + '(arg_name=' + str(self.arg_name) + ', arg_pos=' + str(self.arg_pos) + ')'
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def __name__(self):
         return 'Guard'
@@ -115,6 +118,14 @@ class ValueGuard(Guard):
     def __init__(self, value, arg_name=None, arg_pos=None):
         super(ValueGuard, self).__init__(arg_name, arg_pos)
         self.value = value
+
+    @property
+    def __name__(self):
+        return 'ValueGuard'
+
+    def __repr__(self):
+        return self.__name__ + '[' + repr(self.value) + '](arg_name=' + str(self.arg_name) \
+               + ', arg_pos=' + str(self.arg_pos) + ')'
 
     def validate(self, value):
         return self.value == value

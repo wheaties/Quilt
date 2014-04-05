@@ -1,7 +1,7 @@
 __author__ = 'Owein'
 
 from guard import Guard, ValueGuard, PlaceholderGuard
-from itertools import chain
+from itertools import chain, tee
 from inspect import getargspec
 from functools import update_wrapper
 from collections import defaultdict
@@ -86,9 +86,9 @@ class Pattern(Guard):
                 setattr(guarded, name, holder)
                 held_guards.append(holder)
 
-        chained_guard_pos = (x for x in chain(self.arg_guards, self.kwarg_guards, held_guards) if x.arg_pos is not None)
-        guarded.arg_guards = sorted(chained_guard_pos, key=lambda x: x.arg_pos)
-        guarded.kwarg_guards = {(g.arg_name, g) for g in chain(self.arg_guards, self.kwarg_guards, held_guards) if g.arg_name is not None}
+        (arg, kw) = tee(chain(self.arg_guards, self.kwarg_guards, held_guards))
+        guarded.arg_guards = sorted((x for x in arg if x.arg_pos is not None), key=lambda x: x.arg_pos)
+        guarded.kwarg_guards = {(g.arg_name, g) for g in kw if g.arg_name is not None}
         update_wrapper(guarded, func)
 
         return guarded
@@ -133,12 +133,13 @@ class MemberFunctionPattern(Pattern):
         super(MemberFunctionPattern, self).__init__(arg_guards, kwarg_guards)
 
     def __call__(self, func):
-        (arg_names, varg_name, kwarg_name, _) = getargspec(func) # This returns the self argument as well as the others!
+        (arg_names, varg_name, kwarg_name, _) = getargspec(func)
         arg_names = arg_names[1:]
         found_names = set()
         found_names.update(self._name_arg_guards(arg_names))
         found_names.update(self._position_kwarg_guards(arg_names))
 
+        #This is not correctly lableling arg_pos and arg_name if it can be deduced from arg_names!
         return self._create_guarded(arg_names, found_names, func)
 
 
@@ -156,7 +157,11 @@ class GuardedFunction(object):
         return str(self.underlying_func)
 
     def __repr__(self):
-        return repr(self.underlying_func) + ' guarded by ' + ','.join(map(repr, self.arg_guards))
+        return repr(self.underlying_func) + ' guarded by ' + ','.join(map(repr, self.guards))
+
+    @property
+    def guards(self):
+        return chain(self.arg_guards, self.kwarg_guards)
 
     def validate(self, *args, **kwargs):
         return all(guard.validate(arg) for (arg, guard) in zip(args, self.arg_guards)) and \
@@ -206,6 +211,10 @@ class DefProxy(object):
     @property
     def __closure__(self):
         return None
+
+    @property
+    def __globals__(self):
+        return self.most_recent.__globals__
 
     def __getattr__(self, item):
         return getattr(self.most_recent, item)
