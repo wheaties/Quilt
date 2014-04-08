@@ -6,11 +6,13 @@ from guard import lt, gt
 from exc import *
 
 
+class Foo(object):
+            x = 1
+
 class PatternTest(TestCase):
     def test_validate1(self):
         pat = pattern(x=1)
-        class Foo(object):
-            x = 1
+
 
         class Bar(object):
             x = 2
@@ -30,8 +32,6 @@ class PatternTest(TestCase):
 
     def test_validate4(self):
         pat = pattern(x=1)
-        class Foo(object):
-            x = 1
 
         self.assertTrue(pat.validate(Foo()))
 
@@ -55,9 +55,9 @@ class PatternTest(TestCase):
         def that(x, y):
             return 1
 
-        self.assertEquals(that(1,1), 1)
-        self.assertRaises(MatchError, lambda: that(1,2))
-        self.assertRaises(MatchError, lambda: that(2,1))
+        self.assertEquals(that(x=1, y=1), 1)
+        self.assertRaises(MatchError, lambda: that(x=2, y=1))
+        self.assertRaises(MatchError, lambda: that(y=2, x=1))
 
     def test_call4(self):
         @pattern(x=lt(0))
@@ -74,14 +74,6 @@ class PatternTest(TestCase):
 
         self.assertEquals(that(x=1), 1)
         self.assertEquals(that(x=2), 1)
-
-    def test_call6(self):
-        @pattern(3)
-        def that(x):
-            return 1
-
-        self.assertEquals(that(3), 1)
-        self.assertRaises(MatchError, lambda: that(1))
 
     def test_placement(self):
         @pattern(x=1)
@@ -121,6 +113,7 @@ class TestMemberFuncPattern(TestCase):
 
         self.assertIsNone(self.guard.arg_pos)
         self.assertEquals(that(1), 1)
+        self.assertRaises(MatchError, lambda: that(foo=3))  # problem!
 
     def test_several_params(self):
         @self.pat
@@ -242,6 +235,55 @@ class TestFunctionProxy(TestCase):
         self.assertEquals(proxy(1), 1)
 
 
-#TODO:
-# 1. Test the actual classes, not just the functions
-# 2. Come up with decent mocks
+class TestGuardedFunction(TestCase):
+    def test_unguarded(self):
+        def f(x):
+            return x
+        guard = GuardedFunction(f)
+
+        self.assertEquals(len(guard.arg_guards), 0)
+        self.assertEquals(len(guard.kwarg_guards), 0)
+        self.assertEquals(guard(1), 1)
+        self.assertEquals(guard(x=1), 1)
+
+    def test_one_arg_guard(self):
+        def f(x):
+            return x
+        value = ValueGuard(1, arg_pos=0)
+        guard = GuardedFunction(f, [value])
+
+        self.assertIsNone(value.arg_name)
+        self.assertEquals(guard(1), f(1))
+        self.assertTrue(guard.validate(1))
+        self.assertFalse(guard.validate(2))
+        self.assertRaises(MatchError, lambda: guard(2))
+
+    def test_one_kw_guard(self):
+        def f(x):
+            return x
+        value = ValueGuard(1, arg_name='x')
+        guard = GuardedFunction(f, [], {value.arg_name: value})
+
+        self.assertIsNone(value.arg_pos)
+        self.assertEquals(guard(x=1), f(x=1))
+        self.assertTrue(guard.validate(x=1))
+        self.assertFalse(guard._validate_kwargs(x=2))
+        self.assertFalse(guard.validate(x=2))
+        self.assertRaises(MatchError, lambda: guard(x=2))
+
+    def test_multi_guard(self):
+        def f(x, y):
+            return x+y
+        value1 = ValueGuard(1, arg_name='x', arg_pos=0)
+        value2 = ValueGuard(1, arg_name='y', arg_pos=1)
+        guard = GuardedFunction(f, [value1, value2], {value1.arg_name: value1, value2.arg_name: value2})
+
+        self.assertEquals(guard(1, 1), f(1, 1))
+        self.assertEquals(guard(1, y=1), f(1, y=1))
+        self.assertEquals(guard(x=1, y=1), f(x=1, y=1))
+        self.assertRaises(MatchError, lambda: guard(2, 1))
+        self.assertRaises(MatchError, lambda: guard(1, 2))
+        self.assertRaises(MatchError, lambda: guard(1, y=2))
+        self.assertRaises(MatchError, lambda: guard(2, y=1))
+        self.assertRaises(MatchError, lambda: guard(x=1, y=2))
+        self.assertRaises(MatchError, lambda: guard(x=2, y=1))

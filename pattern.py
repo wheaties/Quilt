@@ -89,7 +89,7 @@ class Pattern(Guard):
 
         (arg, kw) = tee(chain(self.arg_guards, self.kwarg_guards, held_guards))
         guarded.arg_guards = sorted((x for x in arg if x.arg_pos is not None), key=lambda x: x.arg_pos)
-        guarded.kwarg_guards = {(g.arg_name, g) for g in kw if g.arg_name is not None}
+        guarded.kwarg_guards = dict((g.arg_name, g) for g in kw if g.arg_name is not None)
         update_wrapper(guarded, func)
 
         return guarded
@@ -148,7 +148,7 @@ class GuardedFunction(object):
     def __init__(self, underlying_func, arg_guards=None, kwarg_guards=None):
         self.underlying_func = underlying_func
         self.arg_guards = arg_guards or []
-        self.kwarg_guards = kwarg_guards or {}
+        self.kwarg_guards = kwarg_guards or dict()
 
     @property
     def __class__(self):
@@ -165,8 +165,13 @@ class GuardedFunction(object):
         return chain(self.arg_guards, self.kwarg_guards)
 
     def validate(self, *args, **kwargs):
-        return all(guard.validate(arg) for (arg, guard) in zip(args, self.arg_guards)) and \
-            all(self.kwarg_guards[kw].validate(arg) for (kw, arg) in kwargs.items() if kw in self.kwarg_guards)
+        return self._validate_args(*args) and self._validate_kwargs(**kwargs)
+
+    def _validate_args(self, *args):
+        return all(guard.validate(value) for value, guard in zip(args, self.arg_guards))
+
+    def _validate_kwargs(self, **kwargs):
+        return all(guard.validate(kwargs[kw]) for kw, guard in self.kwarg_guards.items() if kw in kwargs)
 
     def __call__(self, *args, **kwargs):
         if self.validate(*args, **kwargs):
