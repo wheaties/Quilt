@@ -4,6 +4,7 @@ import unittest
 from quilt import *
 from pattern import GuardedFunction, pattern
 from guard import *
+from exc import MatchError
 
 
 class ProxyCacheTest(unittest.TestCase):
@@ -134,3 +135,43 @@ class TestConstructor(unittest.TestCase):
         x = Experiment(x=1)
 
         self.assertEquals(x.x, 'greater')
+
+
+class Place(Quilt):
+    def __init__(self, value):
+        self.value = value
+
+    @pattern(x=1)
+    def foo(self, x, y):
+        return x+y
+
+    @foo.y
+    def g(self, that):
+        return self.value < that
+
+    @pattern(1)
+    def bar(self, x, y):
+        return x+y
+
+    @bar.y
+    def g(self, that):
+        return self.value < that
+
+    @pattern(x=lt(1))
+    def bar(self, x, y):
+        return 0
+
+
+class PlaceholderTest(unittest.TestCase):
+    def setUp(self):
+        self.that = Place(1)
+
+    def test_one(self):
+        self.assertEquals(self.that.foo(1, 0), 1)
+        self.assertRaises(MatchError, lambda: self.that.foo(2, 0))
+        self.assertRaises(MatchError, lambda: self.that.foo(1, 1))
+
+    def test_stacked(self):
+        self.assertEquals(self.that.bar(1, 2), 3)
+        self.assertEquals(self.that.bar(0, 4), 0)
+        self.assertRaises(MatchError, lambda: self.that.bar(1, 0))

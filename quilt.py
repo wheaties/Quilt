@@ -34,7 +34,7 @@ class ProxyDict(dict):
 
 
 class QuiltMeta(type):
-    @classmethod  # or should be @staticmethod?
+    @classmethod
     def __prepare__(cls, *args, **kwargs):
         return ProxyDict()
 

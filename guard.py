@@ -306,6 +306,7 @@ def not_none():
 
 
 #TODO: This should be moved to pattern
+#TODO: Make the attribute setting actually work in a class! May need new class specific to instance based
 class PlaceholderGuard(Guard):
     def __init__(self, wrapped_func=None, arg_name=None, arg_pos=None):
         super(PlaceholderGuard, self).__init__(arg_name, arg_pos)
@@ -323,6 +324,46 @@ class PlaceholderGuard(Guard):
             return self.wrapped_func(value)
         else:
             return True
+
+    def __call__(self, func):
+        self.wrapped_func = func
+
+
+#TODO: This should all live in a class specific area instead of general guards
+class HeldGuard(Guard):
+    def __init__(self, instance, owner, wrapped_func, arg_name=None, arg_pos=None):
+        super(Guard).__init__(arg_name, arg_pos)
+        self.instance = instance
+        self.owner = owner
+        self.wrapped_func = wrapped_func
+
+    def validate(self, value):
+        return self.wrapped_func.__get__(self.instance, self.owner)(value)
+
+
+#TODO: Need to pass in a reference to an instance and a class like in a descriptor!
+class PlaceholderDescriptor(object):
+    def __init__(self, wrapped_func=None, arg_name=None, arg_pos=None):
+        self.wrapped_func = wrapped_func
+        self.arg_name = arg_name
+        self.arg_pos = arg_pos
+
+    @property
+    def __name__(self):
+        if self.wrapped_func:
+            return 'BoundGuard'
+        else:
+            return 'UnboundGuard'
+
+    def __get__(self, instance, owner):
+        return HeldGuard(instance, owner, self.wrapped_func, self.arg_name, self.arg_pos)
+
+    def __str__(self):
+        return self.__name__ + '(arg_name=' + str(self.arg_name) + ', arg_pos=' + str(self.arg_pos) + ')'
+
+    def __repr__(self):
+        return self.__name__ + '(arg_name=' + str(self.arg_name) + ', arg_pos=' + str(self.arg_pos) + \
+            ', wrapped=' + repr(self.wrapped_func) + ')'
 
     def __call__(self, func):
         self.wrapped_func = func
