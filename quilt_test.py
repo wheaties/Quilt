@@ -167,7 +167,7 @@ class PlaceholderTest(unittest.TestCase):
         self.that = Place(1)
 
     def test_one(self):
-        self.assertEquals(self.that.foo(1, 0), 1)
+        self.assertEquals(self.that.foo(1, 2), 3)
         self.assertRaises(MatchError, lambda: self.that.foo(2, 0))
         self.assertRaises(MatchError, lambda: self.that.foo(1, 1))
 

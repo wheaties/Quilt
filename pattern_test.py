@@ -168,6 +168,19 @@ class TestDefPattern(TestCase):
         module = import_module(la.__module__)
         self.assertTrue(hasattr(module, '__quilt__'))
 
+    def test_placeholders(self):
+        @defpattern(x=1)
+        def foo(x, y):
+            return x+y
+
+        @foo.y
+        def that(value):
+            return value != 0
+
+        self.assertEquals(foo(1, 1), 2)
+        self.assertRaises(MatchError, lambda: foo(1, 0))
+        self.assertRaises(MatchError, lambda: foo(0, 1))
+
 
 class TestDefProxy(TestCase):
     def test_name(self):
@@ -212,6 +225,9 @@ class TestFunctionProxy(TestCase):
         class MCache(object):
             most_recent = Yo()
 
+            def __getattr__(self, item):
+                return getattr(self.most_recent, item)
+
         proxy = FunctionProxy(MCache())
         self.assertEquals(proxy.x, 1)
         self.assertEquals(proxy.y, 2)
@@ -227,7 +243,7 @@ class TestFunctionProxy(TestCase):
             def __init__(self, f, that=True):
                 self.underlying_func = Cont(f)
                 self.that = that
-            def validate(self, x):
+            def validate_instance(self, *args, **kwargs):
                 return self.that
 
         one = VV(lambda x: 2, False)
@@ -268,7 +284,6 @@ class TestGuardedFunction(TestCase):
         self.assertIsNone(value.arg_pos)
         self.assertEquals(guard(x=1), f(x=1))
         self.assertTrue(guard.validate(x=1))
-        self.assertFalse(guard._validate_kwargs(x=2))
         self.assertFalse(guard.validate(x=2))
         self.assertRaises(MatchError, lambda: guard(x=2))
 

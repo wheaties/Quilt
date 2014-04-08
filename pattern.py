@@ -165,13 +165,13 @@ class GuardedFunction(object):
         return chain(self.arg_guards, self.kwarg_guards)
 
     def validate(self, *args, **kwargs):
-        return self._validate_args(*args) and self._validate_kwargs(**kwargs)
+        return all(guard.validate(value) for value, guard in zip(args, self.arg_guards)) and \
+            all(guard.validate(kwargs[kw]) for kw, guard in self.kwarg_guards.items() if kw in kwargs)
 
-    def _validate_args(self, *args):
-        return all(guard.validate(value) for value, guard in zip(args, self.arg_guards))
-
-    def _validate_kwargs(self, **kwargs):
-        return all(guard.validate(kwargs[kw]) for kw, guard in self.kwarg_guards.items() if kw in kwargs)
+    def validate_instance(self, instance=None, owner=None, *args, **kwargs):
+        return all(guard.validate_instance(value, instance, owner) for value, guard in zip(args, self.arg_guards)) and \
+            all(guard.validate_instance(kwargs[kw], instance, owner) for kw, guard in self.kwarg_guards.items()
+                if kw in kwargs)
 
     def __call__(self, *args, **kwargs):
         if self.validate(*args, **kwargs):
@@ -186,17 +186,20 @@ class FunctionProxy(object):
         self.owner = owner
 
     def __getattr__(self, item):
-        return getattr(self.proxy_cache.most_recent, item)
+        return getattr(self.proxy_cache, item)
 
     def __str__(self):
-        return 'FunctionProxy' + str(self.proxy_cache.cache)
+        return self.__print__(str)
 
     def __repr__(self):
-        return 'FunctionProxy' + ''.join(map(repr, self.proxy_cache))
+        return self.__print__(repr)
+
+    def __print__(self, f):
+        return 'FunctionProxy(' + ', '.join(map(f, self.proxy_cache)) + ')'
 
     def __call__(self, *args, **kwargs):
         for guarded_func in self.proxy_cache:
-            if guarded_func.validate(*args, **kwargs):
+            if guarded_func.validate_instance(self.instance, self.owner, *args, **kwargs):
                 return guarded_func.underlying_func.__get__(self.instance, self.owner)(*args, **kwargs)
         raise MatchError(*args, **kwargs)
 
@@ -226,10 +229,13 @@ class DefProxy(object):
         return getattr(self.most_recent, item)
 
     def __str__(self):
-        return 'DefProxy' + str(self.proxy_cache)
+        return self.__print__(str)
 
     def __repr__(self):
-        return 'DefProxy' + ''.join(map(repr, self.proxy_cache))
+        return self.__print__(repr)
+
+    def __print__(self, f):
+        return 'DefProxy(' + ''.join(map(f, self.proxy_cache)) + ')'
 
     def __call__(self, *args, **kwargs):
         for guarded_func in self.proxy_cache:
