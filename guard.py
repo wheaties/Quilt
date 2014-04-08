@@ -258,6 +258,54 @@ def not_shorter_than(x):
     return LengthGuard(x, operator.ge)
 
 
+def not_empty():
+    return longer_than(0)
+
+
+class TypeOfGuard(Guard):
+    def __init__(self, obj_type, arg_name=None, arg_pos=None):
+        super(TypeOfGuard, self).__init__(arg_name, arg_pos)
+        self.obj_type = obj_type
+
+    @property
+    def __name__(self):
+        return 'TypeOf[' + str(self.obj_type) + ']'
+
+    def validate(self, value):
+        return isinstance(value, self.obj_type)
+
+
+def type_of(obj_type):
+    return TypeOfGuard(obj_type)
+
+
+class CloseToGuard(Guard):
+    def __init__(self, value, epsilon, arg_name=None, arg_pos=None):
+        super(CloseToGuard, self).__init__(arg_name, arg_pos)
+        self.value = value
+        self.epsilon = epsilon
+
+    def validate(self, value):
+        return (self.value - self.epsilon) < value < (self.value + self.epsilon)
+
+
+def close_to(value, epsilon):
+    return CloseToGuard(value, epsilon)
+
+
+class NotNoneGuard(Guard):
+    def __init__(self, arg_name=None, arg_pos=None):
+        super(NotNoneGuard, self).__init__(arg_name, arg_pos)
+
+    def validate(self, value):
+        return value is not None
+
+
+def not_none():
+    return NotNoneGuard()
+
+
+#TODO: This should be moved to pattern
 class PlaceholderGuard(Guard):
     def __init__(self, wrapped_func=None, arg_name=None, arg_pos=None):
         super(PlaceholderGuard, self).__init__(arg_name, arg_pos)
@@ -278,7 +326,3 @@ class PlaceholderGuard(Guard):
 
     def __call__(self, func):
         self.wrapped_func = func
-
-
-#TODO: Add the following:
-# 1. close_to(x, error-bound)

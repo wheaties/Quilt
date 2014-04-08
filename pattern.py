@@ -1,6 +1,7 @@
 __author__ = 'Owein'
 
 from guard import Guard, ValueGuard, PlaceholderGuard
+from exc import *
 from itertools import chain, tee
 from inspect import getargspec
 from functools import update_wrapper
@@ -170,7 +171,7 @@ class GuardedFunction(object):
     def __call__(self, *args, **kwargs):
         if self.validate(*args, **kwargs):
             return self.underlying_func(*args, **kwargs)
-        raise TypeError('Function not defined for', *args, **kwargs)
+        raise MatchError(*args, **kwargs)
 
 
 class FunctionProxy(object):
@@ -192,7 +193,7 @@ class FunctionProxy(object):
         for guarded_func in self.proxy_cache:
             if guarded_func.validate(*args, **kwargs):
                 return guarded_func.underlying_func.__get__(self.instance, self.owner)(*args, **kwargs)
-        raise TypeError('No matching function for', *args, **kwargs)
+        raise MatchError(*args, **kwargs)
 
 
 class DefProxy(object):
@@ -229,4 +230,4 @@ class DefProxy(object):
         for guarded_func in self.proxy_cache:
             if guarded_func.validate(*args, **kwargs):
                 return guarded_func.underlying_func(*args, **kwargs)
-        raise TypeError('No matching function for', *args, **kwargs)
+        raise MatchError(*args, **kwargs)

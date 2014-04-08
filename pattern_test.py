@@ -3,9 +3,9 @@ __author__ = 'Owein'
 from pattern import *
 from unittest import TestCase
 from guard import lt, gt
+from exc import *
 
 
-#You know, this is really not testing @pattern!
 class PatternTest(TestCase):
     def test_validate1(self):
         pat = pattern(x=1)
@@ -41,7 +41,7 @@ class PatternTest(TestCase):
             return x
 
         self.assertEquals(that(1), 1)
-        self.assertRaises(TypeError, lambda: that(2))
+        self.assertRaises(MatchError, lambda: that(2))
 
     def test_call2(self):
         @pattern()
@@ -56,8 +56,8 @@ class PatternTest(TestCase):
             return 1
 
         self.assertEquals(that(1,1), 1)
-        self.assertRaises(TypeError, lambda: that(1,2))
-        self.assertRaises(TypeError, lambda: that(2,1))
+        self.assertRaises(MatchError, lambda: that(1,2))
+        self.assertRaises(MatchError, lambda: that(2,1))
 
     def test_call4(self):
         @pattern(x=lt(0))
@@ -65,7 +65,7 @@ class PatternTest(TestCase):
             return x
 
         self.assertEquals(that(x=-1), -1)
-        self.assertRaises(TypeError, lambda: that(x=2))
+        self.assertRaises(MatchError, lambda: that(x=2))
 
     def test_call5(self):
         @pattern(y=1)
@@ -81,7 +81,7 @@ class PatternTest(TestCase):
             return 1
 
         self.assertEquals(that(3), 1)
-        self.assertRaises(TypeError, lambda: that(1))
+        self.assertRaises(MatchError, lambda: that(1))
 
     def test_placement(self):
         @pattern(x=1)
@@ -93,8 +93,8 @@ class PatternTest(TestCase):
             return z < 0
 
         self.assertEquals(yoyo(x=1, z=-1), 0)
-        self.assertRaises(TypeError, lambda: yoyo(x=0, z=-1))
-        self.assertRaises(TypeError, lambda: yoyo(x=1, z=1))
+        self.assertRaises(MatchError, lambda: yoyo(x=0, z=-1))
+        self.assertRaises(MatchError, lambda: yoyo(x=1, z=1))
 
 
 class TestMemberFuncPattern(TestCase):
@@ -114,7 +114,7 @@ class TestMemberFuncPattern(TestCase):
         self.assertIsNone(self.guard.arg_pos)
         self.assertEquals(that(), 1)
 
-    def test_oneparam(self):
+    def test_one_param(self):
         @self.pat
         def that(foo):
             return 1
@@ -138,8 +138,9 @@ class TestMemberFuncPattern(TestCase):
         self.assertEquals(self.guard.arg_pos, 0)
         self.assertEquals(that(1, 1), 1)
         self.assertEquals(that(x=2, foo=1), 1)
-        self.assertRaises(TypeError, lambda: that(2, 1))
-        self.assertRaises(TypeError, lambda: that(foo=2, x=1))
+        self.assertRaises(MatchError, lambda: that(2, foo=1))  # yup, arg_name='foo' will also have arg_pos=0
+        self.assertRaises(MatchError, lambda: that(2, 1))  # same issue here
+        self.assertRaises(MatchError, lambda: that(foo=2, x=1))
 
 
 class TestDefPattern(TestCase):
@@ -149,7 +150,7 @@ class TestDefPattern(TestCase):
             return x
 
         self.assertEquals(test(1), 1)
-        self.assertRaises(TypeError, lambda: test(2))
+        self.assertRaises(MatchError, lambda: test(2))
 
     def test_stacked_call(self):
         @defpattern(1)
@@ -162,7 +163,7 @@ class TestDefPattern(TestCase):
 
         self.assertEquals(test(1), 1)
         self.assertEquals(test(5), 10)
-        self.assertRaises(TypeError, lambda: test(0))
+        self.assertRaises(MatchError, lambda: test(0))
 
     def test_module(self):
         from importlib import import_module
