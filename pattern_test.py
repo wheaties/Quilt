@@ -9,6 +9,7 @@ from exc import *
 class Foo(object):
             x = 1
 
+
 class PatternTest(TestCase):
     def test_validate1(self):
         pat = pattern(x=1)

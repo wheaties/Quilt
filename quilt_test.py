@@ -88,3 +88,49 @@ class QuiltTest(unittest.TestCase):
 
     def test_pattern5(self):
         self.assertEquals(self.foo.yo(1), 11)
+
+
+class Experiment(Quilt):
+    @pattern(x=0)
+    def __init__(self, x):
+        self.x = 'equal'
+
+    @pattern(x=lt(0))
+    def __init__(self, x):
+        self.x = 'lesser'
+
+    @pattern(x=gt(0))
+    def __init__(self, x):
+        self.x = 'greater'
+
+
+class TestConstructor(unittest.TestCase):
+    def test_init(self):
+        x = Experiment(-1)
+
+        self.assertEquals(x.x, 'lesser')
+
+    def test_init2(self):
+        x = Experiment(x=-1)
+
+        self.assertEquals(x.x, 'lesser')
+
+    def test_init3(self):
+        x = Experiment(0)
+
+        self.assertEquals(x.x, 'equal')
+
+    def test_init4(self):
+        x = Experiment(x=0)
+
+        self.assertEquals(x.x, 'equal')
+
+    def test_init5(self):
+        x = Experiment(1)
+
+        self.assertEquals(x.x, 'greater')
+
+    def test_init6(self):
+        x = Experiment(x=1)
+
+        self.assertEquals(x.x, 'greater')
