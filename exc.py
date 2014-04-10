@@ -5,7 +5,7 @@ from itertools import chain
 
 
 class MatchError(Exception):
-    '''Thrown in situations where none of the guarded functions' patterns matched the input parameters.'''
+    """Thrown in situations where none of the guarded functions' patterns matched the input parameters."""
 
     def __init__(self, *args, **kwargs):
         super(MatchError, self).__init__()
