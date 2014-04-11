@@ -184,6 +184,27 @@ class TestContainsGuard(TestCase):
         self.assertFalse(g.validate([2,3]))
 
 
+class TestCloseToGuard(TestCase):
+    def test_equals(self):
+        g = close_to(1.0, 0.0)
+        self.assertFalse(g.validate(1.0))
+        self.assertFalse(g.validate(0.9999999999999999))
+
+    def test_within(self):
+        g = close_to(1.0, 0.001)
+        self.assertTrue(g.validate(0.9991))
+        self.assertTrue(g.validate(1.0001))
+        self.assertFalse(g.validate(0.999))
+
+    def test_operator(self):
+        def oper(x, y):
+            return x - 2*y
+
+        g = close_to(1.0, 0.1, oper)
+        self.assertTrue(g.validate(1.0))
+        self.assertFalse(g.validate(5))
+
+
 class TestLengthGuard(TestCase):
     def test_length(self):
         g = has_length(4)

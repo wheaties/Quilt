@@ -36,6 +36,30 @@ def _kwarg_pattern(kwargs):
     return kwarg_guards
 
 
+def matches(**kwargs):
+    kw_guards = _kwarg_pattern(**kwargs)
+
+    return Pattern([], kw_guards)
+
+
+class MatchesGuard(Guard):
+    def __init__(self, kwarg_guards, arg_name=None, arg_pos=None):
+        super(MatchesGuard, self).__init__(arg_name, arg_pos)
+        self.guards = kwarg_guards
+
+    def validate(self, value):
+        return all(guard.validate_object(value) for guard in self.guards)
+
+    @property
+    def __name__(self):
+        return 'MatchesGuard'
+
+    def __print__(self, f):
+        return self.__name__ + '(guards=[' + ', '.join(map(f, self.guards)) + '], arg_name=' + f(self.arg_name) + \
+            ', arg_pos=' + f(self.arg_pos) + ')'
+
+
+#TODO: Split this into Pattern and Matches(Guard)
 class Pattern(Guard):
     def __init__(self, arg_guards, kwarg_guards, arg_name=None, arg_pos=None):
         super(Pattern, self).__init__(arg_name, arg_pos)

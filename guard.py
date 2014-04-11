@@ -103,9 +103,6 @@ class ReverseGuard(Guard):
     def __getattr__(self, item):
         return getattr(self.inner, item)
 
-    def __setattr__(self, key, value):
-        return setattr(self.inner, key, value)
-
 
 class AndGuard(Guard):
     """A Guard that validates if and only if both contained Guards validate the supplied value.
@@ -185,7 +182,7 @@ class OperatorGuard(Guard):
 
 
 class ValueGuard(Guard):
-    """A Guard that validates if the supplied value is the same as that of the Guard.
+    """A Guard that validates if the supplied value is the same as the value held by the Guard.
 
     :param value: The supplied valud to validate against.
     :param arg_name: the name of the argument, defaults to None
@@ -255,9 +252,9 @@ ne = not_equal_to
 
 
 class OneOfGuard(Guard):
-    """A Guard that validates by checking for inclusion within user supplied set of values.
+    """A Guard that validates by if the supplied value is one of several user specified values.
 
-    :param iterable: A list, set, dict or some other iterable set that can be traversed multiple times.
+    :param iterable: A list, set, dict or some other iterable collection that can be traversed multiple times.
     :param arg_name: the name of the argument, defaults to None
     :param arg_pos: the position of the argument within the argument list, defaults to None
     """
@@ -357,6 +354,15 @@ def not_contains(*args):
 
 
 class LengthGuard(Guard):
+    """A Guard that validates a supplied value using the __len__ special function against a predetermined value using
+    the supplied 2 parameter predicate, generally one of the operator module's functions: lt, gt, etc.
+
+    :param op: The operator to use in comparing the two values. Must return a boolean value.
+    :param value: The supplied value for comparison
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
     def __init__(self, length, op, arg_name=None, arg_pos=None):
         super(LengthGuard, self).__init__(arg_name, arg_pos)
         self.length = length
@@ -399,6 +405,13 @@ def not_empty():
 
 
 class TypeOfGuard(Guard):
+    """A Guard which validates a value if the type of the object is an instance of a user supplied class.
+
+    :param obj_type: A class type that is a valid second argument to the isinstance function.
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
     def __init__(self, obj_type, arg_name=None, arg_pos=None):
         super(TypeOfGuard, self).__init__(arg_name, arg_pos)
         self.obj_type = obj_type
@@ -416,28 +429,45 @@ def type_of(obj_type):
 
 
 class CloseToGuard(Guard):
-    def __init__(self, value, epsilon, arg_name=None, arg_pos=None):
+    """A Guard that validates if the supplied value is within some epsilon of a predefined value.
+
+    CloseToGuard is suggested for use when validating floating point values or some equivalent which defined a less than
+    comparison method (__lt__.) For user defined types the bounding operation may be substituted but it should be noted
+    that the method used to determine closeness is given by op(v, ep) < value and op(value, ep) < v. Thus the chosen
+    operator should be ideally side-effect free or at least cause no visible side effects on any values used in the
+    validation process.
+
+    :param value: The value to be used to validate.
+    :param epsilon: The tolerance factor of the validated value.
+    :param op: The bounding operator, defaults to subtraction if None is supplied.
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
+    def __init__(self, value, epsilon, op=None, arg_name=None, arg_pos=None):
         super(CloseToGuard, self).__init__(arg_name, arg_pos)
         self.value = value
         self.epsilon = epsilon
+        self.op = op or operator.sub
 
     def validate(self, value):
-        return (self.value - self.epsilon) < value < (self.value + self.epsilon)
+        return self.op(self.value, self.epsilon) < value and self.op(value, self.epsilon) < self.value
 
     @property
     def __name__(self):
         return 'CloseToGuard'
 
     def __print__(self, f):
-        return self.__name__ + '(value=' + f(self.value) + ', epsilon=' + f(self.epsilon) + ', arg_name=' + \
-            f(self.arg_name) + ', arg_pos=' + f(self.arg_pos) + ')'
+        return self.__name__ + '(value=' + f(self.value) + ', epsilon=' + f(self.epsilon) + ', op=' + f(self.op) + \
+            ', arg_name=' + f(self.arg_name) + ', arg_pos=' + f(self.arg_pos) + ')'
 
 
-def close_to(value, epsilon):
-    return CloseToGuard(value, epsilon)
+def close_to(value, epsilon, op=None):
+    return CloseToGuard(value, epsilon, op)
 
 
 class NotNoneGuard(Guard):
+    """"""
     def __init__(self, arg_name=None, arg_pos=None):
         super(NotNoneGuard, self).__init__(arg_name, arg_pos)
 
@@ -454,6 +484,7 @@ def not_none():
 
 
 class RegexGuard(Guard):
+
     def __init__(self, phrase, flag=0, arg_name=None, arg_pos=None):
         super(RegexGuard, self).__init__(arg_name, arg_pos)
         self.regex = re.compile(phrase, flag)
