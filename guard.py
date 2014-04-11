@@ -467,7 +467,12 @@ def close_to(value, epsilon, op=None):
 
 
 class NotNoneGuard(Guard):
-    """"""
+    """A Guard that validates any value which is not None.
+
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
     def __init__(self, arg_name=None, arg_pos=None):
         super(NotNoneGuard, self).__init__(arg_name, arg_pos)
 
@@ -484,22 +489,107 @@ def not_none():
 
 
 class RegexGuard(Guard):
+    """A Guard that validates strings using a regex pattern. Strings may be optionally matched from the beginning only
+    or from any point.
 
-    def __init__(self, phrase, flag=0, arg_name=None, arg_pos=None):
+    All phrases passed into the constructor are compiled into regex patterns so care should be taken to adhere to regex
+    expression rules.
+
+    :param phrase: The regex to be compiled and used to validate the passed in string.
+    :param flag: The flag used to compile the regex
+    :param beginning: A boolean indicating if the regex should match only from the start of the string or if it should
+        search the entire string for a match. Defaults to True.
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
+    def __init__(self, phrase, flag=0, beginning=True, arg_name=None, arg_pos=None):
         super(RegexGuard, self).__init__(arg_name, arg_pos)
         self.regex = re.compile(phrase, flag)
         self.phrase = phrase
+        self.beginning = beginning
 
     @property
     def __name__(self):
         return 'RegexGuard[' + self.phrase + ']'
 
     def validate(self, value):
-        return self.regex.search(value) is not None
+        if self.beginning:
+            return self.regex.match(value) is not None
+        else:
+            return self.regex.search(value) is not None
+
+    def __print__(self, f):
+        return 'RegexGuard(phrase=' + self.phrase + ', arg_name=' + f(self.arg_name) + ', arg_pos=' + \
+            f(self.arg_pos) + ')'
 
 
-def regex(phrase, flag=0):
-    return RegexGuard(phrase, flag)
+def regex(phrase, flag=0, beginning=True):
+    return RegexGuard(phrase, flag, beginning)
+
+
+class BeginsWithGuard(Guard):
+    """A Guard which validates a string value if and only if it begins with the supplied phrase.
+
+    The phrase passed into this guard is treated as a plain string. For Regex style matching please use `RegexGuard`.
+    Validation is case sensitive.
+
+    :param phrase: The phrase to be matched against the beginning of a supplied string.
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
+    def __init__(self, phrase, arg_name=None, arg_pos=None):
+        super(BeginsWithGuard, self).__init__(arg_name, arg_pos)
+        self.phrase = phrase
+
+    @property
+    def __name__(self):
+        return 'BeginsWithGuard[' + self.phrase + ']'
+
+    def validate(self, value):
+        return value.startswith(self.phrase)
+
+    def __print__(self, f):
+        return 'BeginsWithGuard(phrase=' + self.phrase + ', arg_name=' + f(self.arg_name) + ', arg_pos=' + \
+            f(self.arg_pos) + ')'
+
+
+class EndsWithGuard(Guard):
+    """A Guard which validates a string value if and only if it ends with the supplied phrase.
+
+    The phrase passed into this guard is treated as a plain string. For Regex style matching please use `RegexGuard`.
+    Validation is case sensitive.
+
+    :param phrase: The phrase to be matched against the beginning of a supplied string.
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
+    def __init__(self, phrase, arg_name=None, arg_pos=None):
+        super(EndsWithGuard, self).__init__(arg_name, arg_pos)
+        self.phrase = phrase
+
+    @property
+    def __name__(self):
+        return 'EndsWithGuard[' + self.phrase + ']'
+
+    def validate(self, value):
+        return value.endswith(self.phrase)
+
+    def __print__(self, f):
+        return 'EndsWithGuard(phrase=' + self.phrase + ', arg_name=' + f(self.arg_name) + ', arg_pos=' + \
+            f(self.arg_pos) + ')'
+
+
+def begins_with(phrase):
+    return BeginsWithGuard(phrase)
+
+starts_with = begins_with
+
+
+def ends_with(phrase):
+    return EndsWithGuard(phrase)
 
 
 class PlaceholderGuard(Guard):

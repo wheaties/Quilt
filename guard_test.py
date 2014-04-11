@@ -232,6 +232,61 @@ class TestLengthGuard(TestCase):
         self.assertFalse(g.validate([1,2,3]))
 
 
+class TestRegexGuard(TestCase):
+    def test_match(self):
+        g = regex('[abc]de')
+
+        self.assertTrue(g.validate('ade'))
+        self.assertTrue(g.validate('bde'))
+        self.assertTrue(g.validate('cde'))
+        self.assertFalse(g.validate('dde'))
+        self.assertFalse(g.validate('dade'))
+
+    def test_empty(self):
+        g = regex('')
+
+        self.assertTrue(g.validate(''))
+        self.assertTrue(g.validate('a'))
+
+    def test_middle(self):
+        g = regex('[ab]d', beginning=False)
+
+        self.assertTrue(g.validate('ad'))
+        self.assertTrue(g.validate('bd'))
+        self.assertTrue(g.validate('bad')) #why is this failing?
+        self.assertFalse(g.validate('abd'))
+
+
+class TestBeginsWithGuard(TestCase):
+    def test_match(self):
+        g = begins_with('ade')
+
+        self.assertTrue(g.validate('ade'))
+        self.assertTrue(g.validate('adefgh'))
+        self.assertFalse(g.validate('aade'))
+
+    def test_empty(self):
+        g = begins_with('')
+
+        self.assertTrue('a')
+        self.assertFalse('')
+
+
+class TestEndsWithGuard(TestCase):
+    def test_match(self):
+        g = ends_with('ade')
+
+        self.assertTrue(g.validate('ade'))
+        self.assertTrue(g.validate('aade'))
+        self.assertFalse(g.validate('adea'))
+
+    def test_empty(self):
+        g = ends_with('')
+
+        self.assertTrue('a')
+        self.assertFalse('')
+
+
 class TestPlaceholderGuard(TestCase):
     def test_empty(self):
         g = PlaceholderGuard()
