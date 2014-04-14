@@ -253,8 +253,8 @@ class TestRegexGuard(TestCase):
 
         self.assertTrue(g.validate('ad'))
         self.assertTrue(g.validate('bd'))
-        self.assertTrue(g.validate('bad')) #why is this failing?
-        self.assertFalse(g.validate('abd'))
+        self.assertTrue(g.validate('bad'))
+        self.assertFalse(g.validate('dab'))
 
 
 class TestBeginsWithGuard(TestCase):

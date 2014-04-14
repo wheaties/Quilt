@@ -178,7 +178,10 @@ class OperatorGuard(Guard):
             ', arg_pos=' + f(self.arg_pos) + ')'
 
     def validate(self, value):
-        return self.op(value, self.value)
+        try:
+            return self.op(value, self.value)
+        except (TypeError, AttributeError):
+            return False
 
 
 class ValueGuard(Guard):
@@ -235,10 +238,7 @@ ge = greater_than_or_equal
 gte = ge
 not_less_than = greater_than_or_equal
 not_greater_than = less_than_or_equal
-
-
-def equal_to(value):
-    return ValueGuard(value)
+equal_to = ValueGuard
 
 
 eq = equal_to
@@ -264,7 +264,10 @@ class OneOfGuard(Guard):
         self.iterable = iterable
 
     def validate(self, value):
-        return value in self.iterable
+        try:
+            return value in self.iterable
+        except TypeError:
+            return False
 
     @property
     def __name__(self):
@@ -299,7 +302,10 @@ class ContainsGuard(Guard):
         self.iterable = iterable
 
     def validate(self, value):
-        return all(x in value for x in self.iterable)
+        try:
+            return all(x in value for x in self.iterable)
+        except TypeError:
+            return False
 
     @property
     def __name__(self):
@@ -324,14 +330,17 @@ class ContainsNOfGuard(Guard):
         self.number = number
 
     def validate(self, value):
-        count = 0
-        for x in self.iterable:
-            if x in value:
-                count += 1
-            if count == self.number:
-                return True
+        try:
+            count = 0
+            for x in self.iterable:
+                if x in value:
+                    count += 1
+                if count == self.number:
+                    return True
 
-        return False
+            return False
+        except TypeError:
+            return False
 
     @property
     def __name__(self):
@@ -369,7 +378,10 @@ class LengthGuard(Guard):
         self.op = op
 
     def validate(self, value):
-        return self.op(len(value), self.length)
+        try:
+            return self.op(len(value), self.length)
+        except TypeError:
+            return False
 
     @property
     def __name__(self):
@@ -424,8 +436,7 @@ class TypeOfGuard(Guard):
         return isinstance(value, self.obj_type)
 
 
-def type_of(obj_type):
-    return TypeOfGuard(obj_type)
+type_of = TypeOfGuard
 
 
 class CloseToGuard(Guard):
@@ -451,7 +462,10 @@ class CloseToGuard(Guard):
         self.op = op or operator.sub
 
     def validate(self, value):
-        return self.op(self.value, self.epsilon) < value and self.op(value, self.epsilon) < self.value
+        try:
+            return self.op(self.value, self.epsilon) < value and self.op(value, self.epsilon) < self.value
+        except (AttributeError, TypeError):
+            return False
 
     @property
     def __name__(self):
@@ -462,8 +476,7 @@ class CloseToGuard(Guard):
             ', arg_name=' + f(self.arg_name) + ', arg_pos=' + f(self.arg_pos) + ')'
 
 
-def close_to(value, epsilon, op=None):
-    return CloseToGuard(value, epsilon, op)
+close_to = CloseToGuard
 
 
 class NotNoneGuard(Guard):
@@ -484,8 +497,7 @@ class NotNoneGuard(Guard):
         return 'NotNoneGuard'
 
 
-def not_none():
-    return NotNoneGuard()
+not_none = NotNoneGuard
 
 
 class RegexGuard(Guard):
@@ -493,39 +505,43 @@ class RegexGuard(Guard):
     or from any point.
 
     All phrases passed into the constructor are compiled into regex patterns so care should be taken to adhere to regex
-    expression rules.
+    expression rules. Several different flags govern how the regex is compiled and matched against the argument string.
 
     :param phrase: The regex to be compiled and used to validate the passed in string.
     :param flag: The flag used to compile the regex
+    :param pos: The index offset to begin the pattern match, defaults to 0.
     :param beginning: A boolean indicating if the regex should match only from the start of the string or if it should
         search the entire string for a match. Defaults to True.
     :param arg_name: the name of the argument, defaults to None
     :param arg_pos: the position of the argument within the argument list, defaults to None
     """
 
-    def __init__(self, phrase, flag=0, beginning=True, arg_name=None, arg_pos=None):
+    def __init__(self, phrase, flag=0, pos=0, beginning=True, arg_name=None, arg_pos=None):
         super(RegexGuard, self).__init__(arg_name, arg_pos)
         self.regex = re.compile(phrase, flag)
         self.phrase = phrase
+        self.pos = pos
         self.beginning = beginning
 
     @property
     def __name__(self):
-        return 'RegexGuard[' + self.phrase + ']'
+        return 'RegexGuard'
 
     def validate(self, value):
-        if self.beginning:
-            return self.regex.match(value) is not None
-        else:
-            return self.regex.search(value) is not None
+        try:
+            if self.beginning:
+                return self.regex.match(value, pos=self.pos) is not None
+            else:
+                return self.regex.search(value, pos=self.pos) is not None
+        except AttributeError:
+            return False
 
     def __print__(self, f):
-        return 'RegexGuard(phrase=' + self.phrase + ', arg_name=' + f(self.arg_name) + ', arg_pos=' + \
-            f(self.arg_pos) + ')'
+        return self.__name__ + '(phrase=' + self.phrase + ', pos=' + f(self.pos) + ', arg_name=' + f(self.arg_name) + \
+            ', arg_pos=' + f(self.arg_pos) + ')'
 
 
-def regex(phrase, flag=0, beginning=True):
-    return RegexGuard(phrase, flag, beginning)
+regex = RegexGuard
 
 
 class BeginsWithGuard(Guard):
@@ -548,7 +564,10 @@ class BeginsWithGuard(Guard):
         return 'BeginsWithGuard[' + self.phrase + ']'
 
     def validate(self, value):
-        return value.startswith(self.phrase)
+        try:
+            return value.startswith(self.phrase)
+        except AttributeError:
+            return False
 
     def __print__(self, f):
         return 'BeginsWithGuard(phrase=' + self.phrase + ', arg_name=' + f(self.arg_name) + ', arg_pos=' + \
@@ -575,21 +594,19 @@ class EndsWithGuard(Guard):
         return 'EndsWithGuard[' + self.phrase + ']'
 
     def validate(self, value):
-        return value.endswith(self.phrase)
+        try:
+            return value.endswith(self.phrase)
+        except AttributeError:
+            return False
 
     def __print__(self, f):
         return 'EndsWithGuard(phrase=' + self.phrase + ', arg_name=' + f(self.arg_name) + ', arg_pos=' + \
             f(self.arg_pos) + ')'
 
 
-def begins_with(phrase):
-    return BeginsWithGuard(phrase)
-
-starts_with = begins_with
-
-
-def ends_with(phrase):
-    return EndsWithGuard(phrase)
+begins_with = BeginsWithGuard
+starts_with = BeginsWithGuard
+ends_with = EndsWithGuard
 
 
 class PlaceholderGuard(Guard):
