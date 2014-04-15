@@ -1,5 +1,3 @@
-__author__ = 'Owein Reese'
-
 import operator
 import re
 
@@ -619,6 +617,22 @@ class EndsWithGuard(Guard):
 begins_with = BeginsWithGuard
 starts_with = BeginsWithGuard
 ends_with = EndsWithGuard
+
+
+class HasAttributeGuard(Guard):
+    def __init__(self, attr, arg_name=None, arg_pos=None):
+        super(HasAttributeGuard, self).__init__(arg_name, arg_pos)
+        self.attr = attr
+
+    @property
+    def __name__(self):
+        return 'AttributeExists[' + self.attr + ']'
+
+    def validate(self, value):
+        return hasattr(value, self.attr)
+
+
+has_attribute = HasAttributeGuard
 
 
 class PlaceholderGuard(Guard):

@@ -1,7 +1,7 @@
 __author__ = 'Owein'
 
 from unittest import TestCase
-from guard import *
+from quilt.guard import *
 
 
 class _Yo(Guard):

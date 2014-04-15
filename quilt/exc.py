@@ -1,6 +1,3 @@
-__author__ = 'Owein Reese'
-
-
 from itertools import chain
 
 

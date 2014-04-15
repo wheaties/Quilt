@@ -1,13 +1,17 @@
-__author__ = 'Owein'
+from unittest import TestCase
+from quilt.pattern import pattern
+from quilt.guard import *
+from quilt.proxy import FunctionProxy
+from quilt.exc import MatchError
+import sys
 
-import unittest
-from quilt import *
-from pattern import GuardedFunction, pattern
-from guard import *
-from exc import MatchError
+if sys.version_info[0] > 2:
+    from quilt.py3.meta import *
+else:
+    from quilt.py2.meta import *
 
 
-class ProxyCacheTest(unittest.TestCase):
+class ProxyCacheTest(TestCase):
     def test_getattr(self):
         class Foo(object):
             x = 1
@@ -33,8 +37,8 @@ class ProxyCacheTest(unittest.TestCase):
         self.assertEquals(cache.x, 1)
 
 
-class ProxyDictTest(unittest.TestCase):
-    def test_setguarded(self):
+class ProxyDictTest(TestCase):
+    def test_set_guarded(self):
         cache = ProxyDict()
         cache[1] = GuardedFunction(1)
         cache[1] = GuardedFunction(2)
@@ -71,7 +75,7 @@ class FooPattern(Quilt):
         return x
 
 
-class QuiltTest(unittest.TestCase):
+class QuiltTest(TestCase):
     def setUp(self):
         self.foo = FooPattern()
 
@@ -105,7 +109,7 @@ class Experiment(Quilt):
         self.x = 'greater'
 
 
-class TestConstructor(unittest.TestCase):
+class TestConstructor(TestCase):
     def test_init(self):
         x = Experiment(-1)
 
@@ -162,7 +166,7 @@ class Place(Quilt):
         return 0
 
 
-class PlaceholderTest(unittest.TestCase):
+class PlaceholderTest(TestCase):
     def setUp(self):
         self.that = Place(1)
 

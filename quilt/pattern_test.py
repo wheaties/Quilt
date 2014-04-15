@@ -1,13 +1,13 @@
 __author__ = 'Owein'
 
-from pattern import *
+from quilt.pattern import *
 from unittest import TestCase
-from guard import lt, gt
-from exc import *
+from quilt.guard import lt, gt
+from quilt.exc import *
 
 
 class Foo(object):
-            x = 1
+    x = 1
 
 
 class PatternTest(TestCase):
