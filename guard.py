@@ -362,6 +362,11 @@ def not_contains(*args):
     return ReverseGuard(contains(*args))
 
 
+has_none_of = not_contains
+has_all_of = contains
+contains_all_of = contains
+
+
 class LengthGuard(Guard):
     """A Guard that validates a supplied value using the __len__ special function against a predetermined value using
     the supplied 2 parameter predicate, generally one of the operator module's functions: lt, gt, etc.
@@ -414,6 +419,13 @@ def not_shorter_than(x):
 
 def not_empty():
     return longer_than(0)
+
+
+def empty():
+    return has_length(0)
+
+is_empty = empty
+is_not_empty = not_empty
 
 
 class TypeOfGuard(Guard):
@@ -610,6 +622,18 @@ ends_with = EndsWithGuard
 
 
 class PlaceholderGuard(Guard):
+    """A specialized Guard that validates using a wrapped function. In the case of classes, this wrapped function may
+    depends on instance state.
+
+    The PlaceholderGuard if unbound to a function will always yield True for the validated argument. To bind the Guard,
+    treat it as a decorator much like you would when binding a property's accessor. Bound member functions will only be
+    able to access state from an object if the 'validate_instance' method is used.
+
+    :param wrapped_func: The bound function
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
     def __init__(self, wrapped_func=None, arg_name=None, arg_pos=None):
         super(PlaceholderGuard, self).__init__(arg_name, arg_pos)
         self.wrapped_func = wrapped_func
@@ -620,6 +644,10 @@ class PlaceholderGuard(Guard):
             return 'BoundGuard'
         else:
             return 'UnboundGuard'
+
+    def __print__(self, f):
+        return self.__name__ + '(wrapped_func=' + f(self.wrapped_func) + ', arg_name=' + f(self.arg_name) + \
+            ', arg_pos=' + f(self.arg_pos) + ')'
 
     def validate(self, value):
         if self.wrapped_func:

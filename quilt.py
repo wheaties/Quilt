@@ -33,6 +33,7 @@ class ProxyDict(dict):
             super(ProxyDict, self).__setitem__(key, value)
 
 
+#TODO: This works for python3, need to do function renaming for python2 and a more elaborate __new__.
 class QuiltMeta(type):
     @classmethod
     def __prepare__(cls, *args, **kwargs):

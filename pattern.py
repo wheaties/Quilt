@@ -39,9 +39,10 @@ def _kwarg_pattern(kwargs):
 def matches(**kwargs):
     kw_guards = _kwarg_pattern(**kwargs)
 
-    return Pattern([], kw_guards)
+    return MatchesGuard(kw_guards)
 
 
+#TODO: Move to guard.py
 class MatchesGuard(Guard):
     def __init__(self, kwarg_guards, arg_name=None, arg_pos=None):
         super(MatchesGuard, self).__init__(arg_name, arg_pos)
@@ -126,7 +127,6 @@ def defpattern(*args, **kwargs):
     return FuncPattern(arg_guards, kwarg_guards)
 
 
-#TODO: Figure out how to work around nested functions within functions without registering to the whole module
 def _register_proxy(func, guarded):
     module = import_module(func.__module__)
     if not hasattr(module, '__quilt__'):
@@ -203,6 +203,7 @@ class GuardedFunction(object):
         raise MatchError(*args, **kwargs)
 
 
+#TODO: move this to another package.
 class FunctionProxy(object):
     def __init__(self, proxy_cache, instance=None, owner=None):
         self.proxy_cache = proxy_cache
