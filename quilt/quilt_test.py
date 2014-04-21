@@ -1,5 +1,5 @@
 from unittest import TestCase
-from quilt.pattern import pattern
+from quilt.decorators import pattern
 from quilt.guard import *
 from quilt.proxy import FunctionProxy
 from quilt.exc import MatchError

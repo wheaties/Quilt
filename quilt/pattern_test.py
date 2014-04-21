@@ -1,6 +1,8 @@
 __author__ = 'Owein'
 
 from quilt.pattern import *
+from quilt.decorators import *
+from quilt.proxy import FunctionProxy
 from unittest import TestCase
 from quilt.guard import lt, gt
 from quilt.exc import *
@@ -11,31 +13,6 @@ class Foo(object):
 
 
 class PatternTest(TestCase):
-    def test_validate1(self):
-        pat = pattern(x=1)
-
-
-        class Bar(object):
-            x = 2
-
-        self.assertTrue(pat.validate(Foo()))
-        self.assertFalse(pat.validate(Bar()))
-
-    def test_validate2(self):
-        pat = pattern(1)
-
-        self.assertFalse(pat.validate(object()))
-
-    def test_validate3(self):
-        pat = pattern(1)
-
-        self.assertFalse(pat.validate(object()))
-
-    def test_validate4(self):
-        pat = pattern(x=1)
-
-        self.assertTrue(pat.validate(Foo()))
-
     def test_call(self):
         @pattern(1)
         def that(x):

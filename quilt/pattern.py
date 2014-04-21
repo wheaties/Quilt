@@ -1,74 +1,15 @@
-from quilt.guard import Guard, ValueGuard, PlaceholderGuard
-from quilt.exc import *
+from quilt.guard import PlaceholderGuard
+from quilt.exc import MatchError
+from quilt.proxy import DefProxy
 from itertools import chain, tee
 from inspect import getargspec
 from functools import update_wrapper
 from collections import defaultdict
 from importlib import import_module
-import sys
-
-if sys.version_info[0] > 2:
-    from quilt.py3.meta import MemberFunctionPattern
-else:
-    from quilt.py2.meta import MemberFunctionPattern
 
 
-def _guard_type(guard):
-    if isinstance(guard, Guard):
-        return guard
-    else:
-        return ValueGuard(guard)
-
-
-def _arg_pattern(args):
-    arg_guards = []
-    for i, guard in enumerate(args):
-        guarded = _guard_type(guard)
-        guarded.arg_pos = i
-        arg_guards.append(guarded)
-
-    return arg_guards
-
-
-def _kwarg_pattern(kwargs):
-    kwarg_guards = []
-    for kw, guard in kwargs.items():
-        guarded = _guard_type(guard)
-        guarded.arg_name = kw
-        kwarg_guards.append(guarded)
-
-    return kwarg_guards
-
-
-#TODO: Rename this to pattern
-def matches(**kwargs):
-    kw_guards = _kwarg_pattern(**kwargs)
-
-    return PatternGuard(kw_guards)
-
-
-#TODO: Move to guard.py
-class PatternGuard(Guard):
-    def __init__(self, kwarg_guards, arg_name=None, arg_pos=None):
-        super(PatternGuard, self).__init__(arg_name, arg_pos)
-        self.guards = kwarg_guards
-
-    def validate(self, value):
-        return all(guard.validate_object(value) for guard in self.guards)
-
-    @property
-    def __name__(self):
-        return 'MatchesGuard'
-
-    def __print__(self, f):
-        return self.__name__ + '(guards=[' + ', '.join(map(f, self.guards)) + '], arg_name=' + f(self.arg_name) + \
-            ', arg_pos=' + f(self.arg_pos) + ')'
-
-
-#TODO: Split this into Pattern and Matches(Guard)
-class Pattern(Guard):
-    def __init__(self, arg_guards, kwarg_guards, arg_name=None, arg_pos=None):
-        super(Pattern, self).__init__(arg_name, arg_pos)
+class Pattern(object):
+    def __init__(self, arg_guards, kwarg_guards):
         self.arg_guards = arg_guards
         self.kwarg_guards = kwarg_guards
 
@@ -76,15 +17,21 @@ class Pattern(Guard):
     def guards(self):
         return chain(self.arg_guards, self.kwarg_guards)
 
-    def validate(self, value):
-        return all(guard.validate_object(value) for guard in self.guards)
-
     @property
     def __name__(self):
         return 'Pattern'
 
+    def __str__(self):
+        return self.__print__(str)
+
+    def __repr__(self):
+        return self.__print__(repr)
+
+    def __print__(self, f):
+        return self.__name__ + '(guards=[' + ', '.join(map(f, self.guards)) + '])'
+
     def __call__(self, func):
-        (arg_names, varg_name, kwarg_name, _) = getargspec(func) # This returns the self argument as well as the others!
+        (arg_names, varg_name, kwarg_name, _) = getargspec(func)
         found_names = set()
         found_names.update(self._name_arg_guards(arg_names))
         found_names.update(self._position_kwarg_guards(arg_names))
@@ -125,14 +72,6 @@ class Pattern(Guard):
         return guarded
 
 
-#TODO: Rename these to matches and *matches variants
-def defpattern(*args, **kwargs):
-    arg_guards = _arg_pattern(args)
-    kwarg_guards = _kwarg_pattern(kwargs)
-
-    return FuncPattern(arg_guards, kwarg_guards)
-
-
 def _register_proxy(func, guarded):
     module = import_module(func.__module__)
     if not hasattr(module, '__quilt__'):
@@ -150,27 +89,6 @@ class FuncPattern(Pattern):
     def __call__(self, func):
         guarded = super(FuncPattern, self).__call__(func)
         return _register_proxy(func, guarded)
-
-
-def pattern(*args, **kwargs):
-    arg_guards = _arg_pattern(args)
-    kwarg_guards = _kwarg_pattern(kwargs)
-
-    return MemberFunctionPattern(arg_guards, kwarg_guards)
-
-
-# class MemberFunctionPattern(Pattern):
-#     def __init__(self, arg_guards, kwarg_guards):
-#         super(MemberFunctionPattern, self).__init__(arg_guards, kwarg_guards)
-#
-#     def __call__(self, func):
-#         (arg_names, varg_name, kwarg_name, _) = getargspec(func)
-#         arg_names = arg_names[1:]
-#         found_names = set()
-#         found_names.update(self._name_arg_guards(arg_names))
-#         found_names.update(self._position_kwarg_guards(arg_names))
-#
-#         return self._create_guarded(arg_names, found_names, func)
 
 
 class GuardedFunction(object):
@@ -194,7 +112,7 @@ class GuardedFunction(object):
 
     @property
     def guards(self):
-        return chain(self.arg_guards, self.kwarg_guards)
+        return chain(self.arg_guards, self.kwarg_guards.values())
 
     def validate(self, *args, **kwargs):
         return all(guard.validate(value) for value, guard in zip(args, self.arg_guards)) and \
@@ -208,70 +126,4 @@ class GuardedFunction(object):
     def __call__(self, *args, **kwargs):
         if self.validate(*args, **kwargs):
             return self.underlying_func(*args, **kwargs)
-        raise MatchError(*args, **kwargs)
-
-
-#TODO: move this to another package.
-# class FunctionProxy(object):
-#     def __init__(self, proxy_cache, instance=None, owner=None):
-#         self.proxy_cache = proxy_cache
-#         self.instance = instance
-#         self.owner = owner
-#
-#     def __getattr__(self, item):
-#         return getattr(self.proxy_cache, item)
-#
-#     def __str__(self):
-#         return self.__print__(str)
-#
-#     def __repr__(self):
-#         return self.__print__(repr)
-#
-#     def __print__(self, f):
-#         return 'FunctionProxy(underlying=[' + ', '.join(map(f, self.proxy_cache)) + '])'
-#
-#     def __call__(self, *args, **kwargs):
-#         for guarded_func in self.proxy_cache:
-#             if guarded_func.validate_instance(self.instance, self.owner, *args, **kwargs):
-#                 return guarded_func.underlying_func.__get__(self.instance, self.owner)(*args, **kwargs)
-#         raise MatchError(*args, **kwargs)
-
-
-class DefProxy(object):
-    def __init__(self, proxy_cache, most_recent):
-        self.proxy_cache = proxy_cache
-        self.most_recent = most_recent
-
-    @property
-    def __name__(self):
-        return self.most_recent.__name__
-
-    @property
-    def __module__(self):
-        return self.most_recent.__module__
-
-    @property
-    def __closure__(self):
-        return None
-
-    @property
-    def __globals__(self):
-        return self.most_recent.__globals__
-
-    def __getattr__(self, item):
-        return getattr(self.most_recent, item)
-
-    def __str__(self):
-        return self.__print__(str)
-
-    def __repr__(self):
-        return self.__print__(repr)
-
-    def __print__(self, f):
-        return 'DefProxy(name=' + self.__name__ + ', cached=[' + ', '.join(map(f, self.proxy_cache)) + '])'
-
-    def __call__(self, *args, **kwargs):
-        for guarded_func in self.proxy_cache:
-            if guarded_func.validate(*args, **kwargs):
-                return guarded_func.underlying_func(*args, **kwargs)
         raise MatchError(*args, **kwargs)

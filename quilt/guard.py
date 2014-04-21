@@ -635,6 +635,35 @@ class HasAttributeGuard(Guard):
 has_attribute = HasAttributeGuard
 
 
+class PatternGuard(Guard):
+    """Matches the attributes of an object against a collection of Guards. Construction of this Guard mirrors
+    construction of a matches decorator except only keywords are allowed.
+
+    PatternGuard works by inspecting the attributes of the object to be validated and for each named guard, validating
+    that attribute against it. If an attribute does not exist then the object fails validation.
+
+    :param kwarg_guards: The list of Guards to match against an argument. The arg_name parameter of these Guards must
+    not be None.
+    :param arg_name: the name of the argument, defaults to None
+    :param arg_pos: the position of the argument within the argument list, defaults to None
+    """
+
+    def __init__(self, kwarg_guards, arg_name=None, arg_pos=None):
+        super(PatternGuard, self).__init__(arg_name, arg_pos)
+        self.guards = kwarg_guards or []
+
+    def validate(self, value):
+        return all(guard.validate_object(value) for guard in self.guards)
+
+    @property
+    def __name__(self):
+        return 'PatternGuard'
+
+    def __print__(self, f):
+        return self.__name__ + '(guards=[' + ', '.join(map(f, self.guards)) + '], arg_name=' + f(self.arg_name) + \
+            ', arg_pos=' + f(self.arg_pos) + ')'
+
+
 class PlaceholderGuard(Guard):
     """A specialized Guard that validates using a wrapped function. In the case of classes, this wrapped function may
     depends on instance state.
