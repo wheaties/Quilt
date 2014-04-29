@@ -11,7 +11,7 @@ Quilt lets you declaratively state properties about the arguments of a function 
      def foo(x, y, z):
        return 3 + len(z.bar)
      
-     @defpattern(x=greater_than(4))
+     @foo.pattern(x=greater_than(4))
      def foo(x, y, z):
        return x + len(z.bar)
 
@@ -29,7 +29,7 @@ Quilt relies on the new metaclass property of `__prepare__` found in Python3 to 
        def bar(self, x, y):
          return x - y
       
-       @pattern(y=one_of(1, 2, 3))
+       @bar.pattern(y=one_of(1, 2, 3))
        def bar(self, x, y):
          return y
        

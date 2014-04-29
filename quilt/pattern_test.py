@@ -1,8 +1,5 @@
-__author__ = 'Owein'
-
 from quilt.pattern import *
-from quilt.decorators import *
-from quilt.proxy import FunctionProxy
+from quilt.proxy import *
 from unittest import TestCase
 from quilt.guard import lt, gt
 from quilt.exc import *
@@ -14,57 +11,84 @@ class Foo(object):
 
 class PatternTest(TestCase):
     def test_call(self):
-        @pattern(1)
-        def that(x):
-            return x
+        class Bar(object):
+            @pattern(1)
+            def that(self, x):
+                return x
+        item = Bar()
 
-        self.assertEquals(that(1), 1)
-        self.assertRaises(MatchError, lambda: that(2))
+        self.assertEquals(item.that(1), 1)
+        self.assertRaises(MatchError, lambda: item.that(2))
 
     def test_call2(self):
-        @pattern()
-        def that(x):
-            return x
+        class Bar(object):
+            @pattern()
+            def that(self, x):
+                return x
 
-        self.assertEquals(that(1), 1)
+        item = Bar()
+        self.assertEquals(item.that(1), 1)
 
     def test_call3(self):
-        @pattern(x=1, y=1)
-        def that(x, y):
-            return 1
+        class Bar(object):
+            @pattern(x=1, y=1)
+            def that(self, x, y):
+                return 1
+        item = Bar()
 
-        self.assertEquals(that(x=1, y=1), 1)
-        self.assertRaises(MatchError, lambda: that(x=2, y=1))
-        self.assertRaises(MatchError, lambda: that(y=2, x=1))
+        self.assertEquals(item.that(x=1, y=1), 1)
+        self.assertRaises(MatchError, lambda: item.that(x=2, y=1))
+        self.assertRaises(MatchError, lambda: item.that(y=2, x=1))
 
     def test_call4(self):
-        @pattern(x=lt(0))
-        def that(x):
-            return x
+        class Bar(object):
+            @pattern(x=lt(0))
+            def that(self, x):
+                return x
+        item = Bar()
 
-        self.assertEquals(that(x=-1), -1)
-        self.assertRaises(MatchError, lambda: that(x=2))
+        self.assertEquals(item.that(x=-1), -1)
+        self.assertRaises(MatchError, lambda: item.that(x=2))
 
     def test_call5(self):
-        @pattern(y=1)
-        def that(x):
-            return 1
+        class Bar(object):
+            @pattern(y=1)
+            def that(self, x):
+                return 1
+        item = Bar()
 
-        self.assertEquals(that(x=1), 1)
-        self.assertEquals(that(x=2), 1)
+        self.assertEquals(item.that(x=1), 1)
+        self.assertEquals(item.that(x=2), 1)
 
     def test_placement(self):
-        @pattern(x=1)
-        def yoyo(x, z):
-            return x+z
+        class Bar(object):
+            @pattern(x=1)
+            def yoyo(self, x, z):
+                return x+z
 
-        @yoyo.z
-        def arr(z):
-            return z < 0
+            @yoyo.z
+            def arr(self, z):
+                return z < 0
 
-        self.assertEquals(yoyo(x=1, z=-1), 0)
-        self.assertRaises(MatchError, lambda: yoyo(x=0, z=-1))
-        self.assertRaises(MatchError, lambda: yoyo(x=1, z=1))
+        item = Bar()
+        self.assertEquals(item.yoyo(x=1, z=-1), 0)
+        self.assertRaises(MatchError, lambda: item.yoyo(x=0, z=-1))
+        self.assertRaises(MatchError, lambda: item.yoyo(x=1, z=1))
+
+    def test_stacked(self):
+        class Bar(object):
+            @pattern(x=1)
+            def yoyo(self, x):
+                return 0
+
+            @yoyo.pattern(y=3)
+            def yoyo(self, y):
+                return 42
+        item = Bar()
+
+        self.assertEquals(item.yoyo(1), 0)
+        self.assertEquals(item.yoyo(3), 42)
+        self.assertRaises(MatchError, lambda: item.yoyo(2))
 
 
 class TestMemberFuncPattern(TestCase):
@@ -128,22 +152,13 @@ class TestDefPattern(TestCase):
         def test(x):
             return 1
 
-        @defpattern(x=gt(4))
+        @test.pattern(x=gt(4))
         def test(x):
             return 2*x
 
         self.assertEquals(test(1), 1)
         self.assertEquals(test(5), 10)
         self.assertRaises(MatchError, lambda: test(0))
-
-    def test_module(self):
-        from importlib import import_module
-        @defpattern()
-        def la():
-            return 1
-
-        module = import_module(la.__module__)
-        self.assertTrue(hasattr(module, '__quilt__'))
 
     def test_placeholders(self):
         @defpattern(x=1)
@@ -164,22 +179,15 @@ class TestDefProxy(TestCase):
         def yoyo(x):
             return 1
 
-        proxy = DefProxy([yoyo], yoyo)
+        proxy = DefProxy(yoyo)
         self.assertEquals(proxy.__name__, 'yoyo')
-
-    def test_module(self):
-        def yoyo(x):
-            return 1
-
-        proxy = DefProxy([yoyo], yoyo)
-        self.assertEquals(proxy.__module__, 'pattern_test')
 
     def test_get_attr(self):
         class Yo(object):
             x = 1
             y = 2
 
-        proxy = DefProxy([], Yo())
+        proxy = DefProxy(Yo())
         self.assertEquals(proxy.x, 1)
         self.assertEquals(proxy.y, 2)
 
@@ -190,7 +198,7 @@ class TestDefProxy(TestCase):
             def validate(self, x):
                 return True
 
-        proxy = DefProxy([Yo()], None)
+        proxy = DefProxy(Yo())
         self.assertEquals(proxy(4), 1)
 
 

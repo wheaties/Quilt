@@ -1,4 +1,92 @@
-from quilt.exc import MatchError
+from .exc import MatchError
+from .pattern import MemberFunctionPattern, Pattern
+from .guard import Guard, ValueGuard, PatternGuard
+
+
+def _guard_type(guard):
+    if isinstance(guard, Guard):
+        return guard
+    else:
+        return ValueGuard(guard)
+
+
+def _arg_pattern(args):
+    arg_guards = []
+    for i, guard in enumerate(args):
+        guarded = _guard_type(guard)
+        guarded.arg_pos = i
+        arg_guards.append(guarded)
+
+    return arg_guards
+
+
+def _kwarg_pattern(kwargs):
+    kwarg_guards = []
+    for kw, guard in kwargs.items():
+        guarded = _guard_type(guard)
+        guarded.arg_name = kw
+        kwarg_guards.append(guarded)
+
+    return kwarg_guards
+
+
+def matches(**kwargs):
+    kw_guards = _kwarg_pattern(kwargs)
+
+    return PatternGuard(kw_guards)
+
+
+def defpattern(*args, **kwargs):
+    arg_guards = _arg_pattern(args)
+    kwarg_guards = _kwarg_pattern(kwargs)
+    wrapper = Pattern(arg_guards, kwarg_guards)
+
+    def _wrapped(func):
+        f = wrapper(func)
+        return DefProxy(f)
+    return _wrapped
+
+
+def pattern(*args, **kwargs):
+    arg_guards = _arg_pattern(args)
+    kwarg_guards = _kwarg_pattern(kwargs)
+    wrapper = MemberFunctionPattern(arg_guards, kwarg_guards)
+
+    def _wrapped(func):
+        f = wrapper(func)
+        return ProxyCache(f)
+    return _wrapped
+
+
+class _Proxy(object):
+    """Strictly internal mixin class which augments inheriting classes with the ability to further add additional
+    pattern matching.
+
+    Decorator functions are used in the initial creation of the proxy objects. However, in order to support both
+    Python 2.7+ and 3+ without needing to use meta-classes, a descriptor-decorator pairing is required for class based
+    pattern matching. Module based functions can continue to use the callable proxy directly but modification to the
+    module are no longer required.
+
+    :param proxy_cache: initial list of GuardedFunction
+    :pattern_type: A reference to the Pattern class used to instantiate GuardedFunction.
+    """
+
+    def __init__(self, proxy_cache, pattern_type):
+        self.proxy_cache = proxy_cache
+        self.pattern_type = pattern_type
+
+    def pattern(self, *args, **kwargs):
+        """Used as a decorator. Creates the set of argument conditions needed to call the function."""
+        arg_guards = _arg_pattern(args)
+        kwarg_guards = _kwarg_pattern(kwargs)
+        decor = self.pattern_type(arg_guards, kwarg_guards)
+
+        def _wrapper(func):
+            inner = decor(func)
+            self.proxy_cache.append(inner)
+
+            return self
+        return _wrapper
 
 
 class FunctionProxy(object):
@@ -42,7 +130,7 @@ class FunctionProxy(object):
         raise MatchError(*args, **kwargs)
 
 
-class ProxyCache(object):
+class ProxyCache(_Proxy):
     """Descriptor object for holding a reference to all GuardedFunction that have been assigned to the named class
     attribute. Proxies the attributes of the most recently added GuardedFunction for use with PlaceholderGuard.
 
@@ -57,7 +145,7 @@ class ProxyCache(object):
     :param initial_func: The first GuardedFunction
     """
     def __init__(self, initial_func):
-        self.cache = [initial_func]
+        super(ProxyCache, self).__init__([initial_func], MemberFunctionPattern)
         self.most_recent = initial_func
 
     def __getattr__(self, item):
@@ -67,7 +155,7 @@ class ProxyCache(object):
         return FunctionProxy(self, instance, owner)
 
     def __iter__(self):
-        return iter(self.cache)
+        return iter(self.proxy_cache)
 
     def __str__(self):
         return self.__print__(str)
@@ -76,14 +164,15 @@ class ProxyCache(object):
         return self.__print__(repr)
 
     def __print__(self, f):
-        return 'ProxyCache(proxies=[' + ', '.join(map(f, self.cache)) + '], most_recent=' + f(self.most_recent) + ')'
+        return 'ProxyCache(cached=[' + ', '.join(map(f, self.proxy_cache)) + '], most_recent=' + f(self.most_recent) \
+           + ')'
 
     def append(self, value):
-        self.cache.append(value)
+        self.proxy_cache.append(value)
         self.most_recent = value
 
 
-class DefProxy(object):
+class DefProxy(_Proxy):
     """Callable object that proxies an iterable collection of related GuardedFunctions associated with a named family of
     pattern matched function declarations within a module. If no GuardedFunction matches the arguments, raises a
     MatchError.
@@ -98,13 +187,12 @@ class DefProxy(object):
     attributes. Accessing the __closure__ property always will return None. No attribute accessed this way is
     assignable.
 
-    :param proxy_cache: an iterable collection of GuardeFunction.
-    :param most_recent: the most recently added GuardedFunction.
+    :param init_function: an iterable collection of GuardeFunction
     """
 
-    def __init__(self, proxy_cache, most_recent):
-        self.proxy_cache = proxy_cache
-        self.most_recent = most_recent
+    def __init__(self, init_function):
+        super(DefProxy, self).__init__([init_function], Pattern)
+        self.most_recent = init_function
 
     @property
     def __name__(self):

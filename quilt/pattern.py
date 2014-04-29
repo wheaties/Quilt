@@ -1,14 +1,23 @@
-from quilt.guard import PlaceholderGuard
-from quilt.exc import MatchError
-from quilt.proxy import DefProxy
+from .guard import PlaceholderGuard
+from .exc import MatchError
 from itertools import chain, tee
 from inspect import getargspec
 from functools import update_wrapper
-from collections import defaultdict
-from importlib import import_module
 
 
 class Pattern(object):
+    """Base callable object responsible for creating GuardedFunction and assigning argument names and argument positions
+    to Guards.
+
+    Pattern should not be used on its own. It is designed to be used as a base class with inheriting classes defining
+    the scope of useage. Instances of Pattern are designed to be returned from a decorator function/class and used once
+    due to the side-effecting nature of the __call__ method.
+
+    :param arg_guards: A sorted list of Guard that have had the arg_pos variable set to something other than None.
+    Sorting is by arg_pos.
+    :param kwarg_guards: A list of Guard that have had the arg_name variable set to something other than None.
+    """
+
     def __init__(self, arg_guards, kwarg_guards):
         self.arg_guards = arg_guards
         self.kwarg_guards = kwarg_guards
@@ -39,6 +48,8 @@ class Pattern(object):
         return self._create_guarded(arg_names, found_names, func)
 
     def _name_arg_guards(self, arg_names):
+        """Assigns the argument name to the arg_guards list in the order of appearance in the function's argument list.
+        """
         names = []
         for (name, guard) in zip(arg_names, self.arg_guards):
             guard.arg_name = name
@@ -47,6 +58,7 @@ class Pattern(object):
         return names
 
     def _position_kwarg_guards(self, arg_names):
+        """Assigns the argument position to the kwarg_guards as they are found within the function's argument list."""
         names = []
         for guard in self.kwarg_guards:
             if guard.arg_name in arg_names:
@@ -56,6 +68,8 @@ class Pattern(object):
         return names
 
     def _create_guarded(self, arg_names, found_names, func):
+        """Creates the GuardedFunction. For any function argument not found within the arg_guards or kwarg_guards lists
+        creates and sets a new PlaceholderGuard on a attribute with matching name."""
         guarded = GuardedFunction(func)
         held_guards = []
         for i, name in enumerate(arg_names):
@@ -72,23 +86,18 @@ class Pattern(object):
         return guarded
 
 
-def _register_proxy(func, guarded):
-    module = import_module(func.__module__)
-    if not hasattr(module, '__quilt__'):
-        setattr(module, '__quilt__', defaultdict(list))
-    module_func_reg = module.__quilt__[func.__name__]
-    module_func_reg.append(guarded)
-
-    return DefProxy(module_func_reg, guarded)
-
-
-class FuncPattern(Pattern):
+class MemberFunctionPattern(Pattern):
     def __init__(self, arg_guards, kwarg_guards):
-        super(FuncPattern, self).__init__(arg_guards, kwarg_guards)
+        super(MemberFunctionPattern, self).__init__(arg_guards, kwarg_guards)
 
     def __call__(self, func):
-        guarded = super(FuncPattern, self).__call__(func)
-        return _register_proxy(func, guarded)
+        (arg_names, varg_name, kwarg_name, _) = getargspec(func)
+        arg_names = arg_names[1:]
+        found_names = set()
+        found_names.update(self._name_arg_guards(arg_names))
+        found_names.update(self._position_kwarg_guards(arg_names))
+
+        return self._create_guarded(arg_names, found_names, func)
 
 
 class GuardedFunction(object):

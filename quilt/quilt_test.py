@@ -1,14 +1,7 @@
 from unittest import TestCase
-from quilt.decorators import pattern
 from quilt.guard import *
-from quilt.proxy import FunctionProxy
+from quilt.proxy import *
 from quilt.exc import MatchError
-import sys
-
-if sys.version_info[0] > 2:
-    from quilt.py3.meta import *
-else:
-    from quilt.py2.meta import *
 
 
 class ProxyCacheTest(TestCase):
@@ -37,40 +30,24 @@ class ProxyCacheTest(TestCase):
         self.assertEquals(cache.x, 1)
 
 
-class ProxyDictTest(TestCase):
-    def test_set_guarded(self):
-        cache = ProxyDict()
-        cache[1] = GuardedFunction(1)
-        cache[1] = GuardedFunction(2)
-
-        self.assertEquals(len(cache[1].cache), 2)
-
-    def test_unguarded(self):
-        cache = ProxyDict()
-        cache[2] = 4
-        cache[2] = 5
-
-        self.assertEquals(cache[2], 5)
-
-
-class FooPattern(Quilt):
+class FooPattern(object):
     @pattern(lt(0))
     def yo(self, x):
         return x*x
 
-    @pattern(0)
+    @yo.pattern(0)
     def yo(self, x):
         return 0
 
-    @pattern(1)
+    @yo.pattern(1)
     def yo(self, x):
         return 11
 
-    @pattern(x=2)
+    @yo.pattern(x=2)
     def yo(self, x):
         return -7
 
-    @pattern(gt(2))
+    @yo.pattern(gt(2))
     def yo(self, x):
         return x
 
@@ -95,16 +72,16 @@ class QuiltTest(TestCase):
         self.assertEquals(self.foo.yo(1), 11)
 
 
-class Experiment(Quilt):
+class Experiment(object):
     @pattern(x=0)
     def __init__(self, x):
         self.x = 'equal'
 
-    @pattern(x=lt(0))
+    @__init__.pattern(x=lt(0))
     def __init__(self, x):
         self.x = 'lesser'
 
-    @pattern(x=gt(0))
+    @__init__.pattern(x=gt(0))
     def __init__(self, x):
         self.x = 'greater'
 
@@ -141,7 +118,7 @@ class TestConstructor(TestCase):
         self.assertEquals(x.x, 'greater')
 
 
-class Place(Quilt):
+class Place(object):
     def __init__(self, value):
         self.value = value
 
@@ -161,7 +138,7 @@ class Place(Quilt):
     def g(self, that):
         return self.value < that
 
-    @pattern(x=lt(1))
+    @bar.pattern(x=lt(1))
     def bar(self, x, y):
         return 0
 
