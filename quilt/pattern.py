@@ -101,6 +101,11 @@ class MemberFunctionPattern(Pattern):
 
 
 class GuardedFunction(object):
+    """Callable function wrapper. Contains all Guard objects needed to validate the argument list and if successful call
+    the wrapped function.
+
+    GuardedFunction can be used on it's own, although it is recommended not to expose
+    """
     def __init__(self, underlying_func, arg_guards=None, kwarg_guards=None):
         self.underlying_func = underlying_func
         self.arg_guards = arg_guards or []

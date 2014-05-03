@@ -318,6 +318,7 @@ class ContainsNOfGuard(Guard):
     """A Guard that validates a given iterable contains N of the supplied collection.
 
     :param iterable: A list, set or some other iterable collection that can be traversed multiple times.
+    :param number: The number of elements that should be contained in the validated iterable
     :param arg_name: the name of the argument, defaults to None
     :param arg_pos: the position of the argument within the argument list, defaults to None
     """
@@ -363,6 +364,16 @@ def not_contains(*args):
 has_none_of = not_contains
 has_all_of = contains
 contains_all_of = contains
+
+
+def has_n_of(num, *args):
+    if len(args) == 1 and hasattr(args[0], '__iter__'):
+        return ContainsNOfGuard(num, args[0])
+    else:
+        return ContainsNOfGuard(num, args)
+
+
+contains_n_of = has_n_of
 
 
 class LengthGuard(Guard):

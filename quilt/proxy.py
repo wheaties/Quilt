@@ -4,6 +4,7 @@ from .guard import Guard, ValueGuard, PatternGuard
 
 
 def _guard_type(guard):
+    """Internal function call used to catch plain ordinary values passed as part of a pattern match."""
     if isinstance(guard, Guard):
         return guard
     else:
@@ -11,6 +12,8 @@ def _guard_type(guard):
 
 
 def _arg_pattern(args):
+    """Parses the argument guard list and assigns the position of the argument with respect to the function signature.
+    If a plain ordinary value, converts to a ValueGuard."""
     arg_guards = []
     for i, guard in enumerate(args):
         guarded = _guard_type(guard)
@@ -21,6 +24,8 @@ def _arg_pattern(args):
 
 
 def _kwarg_pattern(kwargs):
+    """Parses the key-word argument guard list and assigns the name of the argument with respect to the function
+    signature. If a plain ordinary value, converts to a ValueGuard."""
     kwarg_guards = []
     for kw, guard in kwargs.items():
         guarded = _guard_type(guard)
@@ -31,28 +36,31 @@ def _kwarg_pattern(kwargs):
 
 
 def matches(**kwargs):
+    """Creates a Guard that inspects the attributes of the object passed in the corresponding function signature."""
     kw_guards = _kwarg_pattern(kwargs)
 
     return PatternGuard(kw_guards)
 
 
 def defpattern(*args, **kwargs):
+    """This needs a lot of documentation"""
     arg_guards = _arg_pattern(args)
     kwarg_guards = _kwarg_pattern(kwargs)
-    wrapper = Pattern(arg_guards, kwarg_guards)
 
     def _wrapped(func):
+        wrapper = Pattern(arg_guards, kwarg_guards)
         f = wrapper(func)
         return DefProxy(f)
     return _wrapped
 
 
 def pattern(*args, **kwargs):
+    """This needs a lot of documentation"""
     arg_guards = _arg_pattern(args)
     kwarg_guards = _kwarg_pattern(kwargs)
-    wrapper = MemberFunctionPattern(arg_guards, kwarg_guards)
 
     def _wrapped(func):
+        wrapper = MemberFunctionPattern(arg_guards, kwarg_guards)
         f = wrapper(func)
         return ProxyCache(f)
     return _wrapped
@@ -76,7 +84,8 @@ class _Proxy(object):
         self.pattern_type = pattern_type
 
     def pattern(self, *args, **kwargs):
-        """Used as a decorator. Creates the set of argument conditions needed to call the function."""
+        """Used as a decorator. Creates a new pattern match statement that will invoke the wrapped function iff no other
+        previous pattern matched the argument statement."""
         arg_guards = _arg_pattern(args)
         kwarg_guards = _kwarg_pattern(kwargs)
         decor = self.pattern_type(arg_guards, kwarg_guards)

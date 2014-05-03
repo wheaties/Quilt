@@ -7,7 +7,7 @@ The concept and implementation of multiple-dispatch as put forth in a blog post 
 
 Quilt lets you declaratively state properties about the arguments of a function and dispatch upon those arguments:
 
-     @defpattern(z=pattern(bar=longer_than(0)))
+     @defpattern(z=matches(bar=longer_than(0)))
      def foo(x, y, z):
        return 3 + len(z.bar)
      
